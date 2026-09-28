@@ -212,3 +212,7 @@ Generated .osu files retain song title, artist and resource paths. BeatmapID bec
 Resource limits: 16 MiB per .osu/.osb document, 256 MiB per asset, 1 GiB total preflight resources and 20,000 asset entries. Sprites, frame animations, standard non-resource storyboard commands and explicit samples are supported unchanged at rate 1. Storyboard variables, unknown event commands, unsupported media extensions, missing assets and links fail explicitly. The archive provenance JSON records schema/package IDs, source hash/play/mods, options, recipe reasons, generated hashes and resource hashes without another database.
 
 Publication is the commit point: cancellation before it cleans owned staging; cancellation after a successful rename does not delete the finished user artifact. Displayed preview/source changes are revalidated for each export. Normal editing races are detected through rechecks; this is not a hostile concurrent-filesystem security boundary. Import behavior, audio playback and separate-mapset presentation still need actual osu! testing.
+
+### TG4 availability clarification
+
+A preview can contain only slowdown variants when spacing transformation is unsupported. Such a preview has zero exportable maps in TG4. The Practice toolbar now displays this count and the specific spacing omission reason; Export/Open clicks explain unavailable prerequisites. No package is implied to exist before successful publication. The user's reported two-slowdown/out-of-bounds case is covered by a native UI action test.

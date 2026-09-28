@@ -7,6 +7,52 @@ namespace OsuAimAnalyzer.Tests;
 public class InspectorLayoutTests
 {
     [Fact]
+    public void PracticeActions_ExplainUnavailableExportAndOpenAndDispatchEligibleClick()
+    {
+        Exception? failure = null;
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                using var control = new PracticePreviewControl();
+                using var host = new Form { ClientSize = new Size(650, 720), ShowInTaskbar = false, StartPosition = FormStartPosition.Manual, Location = new Point(-30000, -30000) };
+                host.Controls.Add(control); host.Show();
+                control.Reset("Test map");
+                var buttons = control.Controls.OfType<FlowLayoutPanel>().Single().Controls.OfType<Button>().ToArray();
+                var export = buttons.Single(b => b.Text.StartsWith("Export spacing"));
+                var open = buttons.Single(b => b.Text == "Open package");
+                var status = control.Controls.OfType<Label>().Single();
+                var unsupported = BeatmapDocument.Parse(BeatmapDocumentTests.Map.Replace("220:120", "900:120"));
+                var unavailable = PracticeSeriesPlanner.Plan(PracticePlannerTests.Identity(unsupported, ModUtils.DoubleTime), unsupported, 1, Array.Empty<RecommendationEvidence>(), PracticePitchPolicy.PreservePitch);
+                Assert.Equal(2, unavailable.Variants.Count);
+                control.ShowPreview(unavailable, PracticePreviewControl.FormatPreview(unavailable));
+                int dispatched = 0;
+                control.ExportRequested += _ => dispatched++;
+                Assert.Contains("0 exportable", status.Text);
+                export.PerformClick();
+                Assert.Contains("Nothing exportable", status.Text);
+                Assert.Equal(0, dispatched);
+                open.PerformClick();
+                Assert.Contains("No package has been exported", status.Text);
+                var document = BeatmapDocument.Parse(BeatmapDocumentTests.Map);
+                var available = PracticeSeriesPlanner.Plan(PracticePlannerTests.Identity(document), document, 1, Array.Empty<RecommendationEvidence>(), PracticePitchPolicy.PreservePitch);
+                control.ShowPreview(available, PracticePreviewControl.FormatPreview(available));
+                Assert.Contains("1 exportable", status.Text);
+                export.PerformClick();
+                Assert.Equal(1, dispatched);
+                control.ShowPublished(new PublishedPracticePackage(available.Source, Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".osz"), new[] { "practice.osu" }));
+                open.PerformClick();
+                Assert.Contains("moved or deleted", status.Text);
+                host.Close();
+            }
+            catch (Exception e) { failure = e; }
+        });
+        thread.SetApartmentState(ApartmentState.STA); thread.Start();
+        Assert.True(thread.Join(TimeSpan.FromSeconds(30)));
+        if (failure is not null) ExceptionDispatchInfo.Capture(failure).Throw();
+    }
+
+    [Fact]
     public void PracticeExport_MainFormPublishesExplicitSubsetAndEnablesOpen()
     {
         Exception? failure = null;
@@ -155,7 +201,8 @@ public class InspectorLayoutTests
                         {
                             var practiceText = pages[key].Controls.OfType<TextBox>().Single();
                             Assert.True(practiceText.Width >= pageHost.Width - 24);
-                            Assert.True(practiceText.Height >= pageHost.Height - 130);
+                            int headerHeight = pages[key].Controls.Cast<Control>().Where(c => c != practiceText).Sum(c => c.Height);
+                            Assert.Equal(pages[key].ClientSize.Height - pages[key].Padding.Vertical - headerHeight, practiceText.Height);
                             Assert.Contains("Select an analyzed play", practiceText.Text);
                             continue;
                         }

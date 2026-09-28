@@ -10,6 +10,7 @@ public sealed class PracticePreviewControl : UserControl
     private readonly Button open = ToolkitUi.Button("Open package");
     private PracticeSeriesPreview? currentPreview;
     private PublishedPracticePackage? published;
+    private readonly Label actionStatus = new() { Dock = DockStyle.Top, AutoSize = true, ForeColor = Theme.Warn, Padding = new Padding(0, 0, 0, 8) };
     private readonly ComboBox pitch = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 165 };
     private readonly TextBox readout = new()
     {
@@ -29,19 +30,30 @@ public sealed class PracticePreviewControl : UserControl
         pitch.SelectedIndex = 0;
         var toolbar = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, WrapContents = true, Padding = new Padding(0, 0, 0, 8) };
         toolbar.Controls.AddRange(new Control[] { preview, cancel, pitch, export, open });
-        Controls.Add(readout); Controls.Add(toolbar);
+        Controls.Add(readout); Controls.Add(actionStatus); Controls.Add(toolbar);
+        Resize += (_, _) => actionStatus.MaximumSize = new Size(Math.Max(1, ClientSize.Width - Padding.Horizontal), 0);
         preview.Click += (_, _) => PreviewRequested?.Invoke(pitch.SelectedIndex == 0 ? PracticePitchPolicy.PreservePitch : PracticePitchPolicy.ChangeWithRate);
         cancel.Click += (_, _) => CancelRequested?.Invoke();
-        export.Click += (_, _) => { if (currentPreview is not null) ExportRequested?.Invoke(currentPreview); };
+        export.Click += (_, _) =>
+        {
+            if (currentPreview is null) { actionStatus.Text = "Build a preview first, then export an eligible spacing/stat map."; return; }
+            if (!currentPreview.Variants.Any(v => v.Options.SourceClockRate == 1 && !v.Preview.RequiresAudioRendering))
+            {
+                actionStatus.Text = "Nothing exportable in this preview. " + UnavailableReason();
+                return;
+            }
+            ExportRequested?.Invoke(currentPreview);
+        };
         open.Click += (_, _) =>
         {
-            if (published is null) return;
+            if (published is null) { actionStatus.Text = "No package has been exported yet. Export spacing/stat maps first; Open package then imports the saved .osz with your registered osu! client."; return; }
             try
             {
                 if (!File.Exists(published.PackagePath)) throw new FileNotFoundException("The package was moved or deleted.");
                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(published.PackagePath) { UseShellExecute = true });
+                actionStatus.Text = "Asked Windows to open: " + published.PackagePath;
             }
-            catch (Exception e) { readout.AppendText("\r\nCould not open package: " + e.Message); }
+            catch (Exception e) { actionStatus.Text = "Could not open package: " + e.Message + " Package path: " + published.PackagePath; }
         };
         pitch.SelectedIndexChanged += (_, _) =>
         {
@@ -68,12 +80,19 @@ public sealed class PracticePreviewControl : UserControl
         preview.Enabled = hasSelection && !busy;
         cancel.Enabled = busy;
         pitch.Enabled = !busy;
-        export.Enabled = !busy && currentPreview?.Variants.Any(v => v.Options.SourceClockRate == 1 && !v.Preview.RequiresAudioRendering) == true;
-        open.Enabled = !busy && published is not null;
+        // Keep these actions reachable so an unavailable operation explains itself instead of silently ignoring clicks.
+        export.Enabled = open.Enabled = !busy;
+        int eligible = currentPreview?.Variants.Count(v => v.Options.SourceClockRate == 1 && !v.Preview.RequiresAudioRendering) ?? 0;
+        actionStatus.Text = busy ? "Working… Cancel remains available."
+            : published is not null ? "Package saved. Open package imports it with your registered osu! client."
+            : currentPreview is not null ? $"{eligible} exportable spacing/stat map(s). " + (eligible == 0 ? UnavailableReason() : "Export opens the selection and save dialogs. Slowdown exports need TG5.")
+            : "Build a preview before exporting. Open package requires a successful export.";
         if (busy) readout.Text = "Reading the selected map, comparing diagnosis evidence and building previews…\r\nYou can cancel or select another play.";
     }
 
     public void ShowMessage(string message) { SetBusy(false); readout.Text = message; }
+    private string UnavailableReason() => "Slowdown maps need audio rendering (TG5). " +
+        (currentPreview?.Notes.FirstOrDefault(n => n.StartsWith("Reduced spacing:", StringComparison.Ordinal)) ?? "See the omitted-variant explanations below.");
     public void ShowPreview(PracticeSeriesPreview result, string text) { currentPreview = result; published = null; ShowMessage(text); }
     public void ShowPublished(PublishedPracticePackage package)
     {

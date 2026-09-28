@@ -35,3 +35,7 @@ One shared exporter supports multiple spacing/stat variants, source/options reva
 TG5 is required for playable slowdown exports. Current source-relative stat/mod rules remain unchanged. Slider spacing still uses exit proxies, not exact curve evaluation. Basic storyboards are preserved only at unchanged rate; variables and unsupported resource/event types fail explicitly. Linked/reparse paths are rejected, including linked output folders; choose a normal local directory.
 
 Documents are capped at 16 MiB, assets at 256 MiB each and 1 GiB total, and resource entries at 20,000. Assets are copied, not decoded. Rechecks detect normal editing races but do not constitute a hostile concurrent-filesystem security boundary. Cancellation after the atomic publication point retains the completed user-selected artifact. Import behavior remains NEEDS USER TEST, not ACCEPTED.
+
+## TG4 feedback follow-up
+
+IMPLEMENTED; NEEDS USER TEST: Practice now shows export eligibility and the Reduced spacing omission reason beside the buttons. Unavailable Export/Open actions explain why instead of ignoring clicks. The reported screenshot had only slowdown variants; out-of-bounds spacing was correctly rejected. No unsafe transform bypass or audio generation was added. Native suite now contains 102 passing tests, including actual action-click coverage. Test build: publish-tg4-fix/OsuAimAnalyzer.exe.

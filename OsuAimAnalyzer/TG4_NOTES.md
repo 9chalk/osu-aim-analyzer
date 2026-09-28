@@ -9,3 +9,7 @@
 - Build: bin/Release/net8.0-windows/win-x64/publish-tg4/OsuAimAnalyzer.exe. Existing WFAC010 warning remains.
 
 Format references checked during implementation: [official .osu specification](https://osu.ppy.sh/wiki/en/Client/File_formats/osu_%28file_format%29) and [storyboard objects](https://osu.ppy.sh/wiki/en/Storyboard/Scripting/Objects). Local sample banks are retained conservatively; sprite/animation dependencies follow these formats. Unsupported variables/events are rejected instead of guessed.
+
+## TG4 availability feedback fix
+
+The user's screenshot showed two slowdown variants and no Reduced spacing result: spacing was rejected for out-of-bounds geometry. Export/Open appeared inert because neither operation was available. The Practice page now shows the exportable count and the actual Reduced spacing omission reason beside the toolbar. Clicking an unavailable action explains the prerequisite; package-open failures appear there too. Unsupported transforms remain blocked. A new STA regression exercises real button clicks for this two-slowdown case and dispatch for an eligible spacing preview. No TG5 implementation is included.
