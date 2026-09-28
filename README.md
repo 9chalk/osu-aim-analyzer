@@ -16,7 +16,8 @@ Built with extensive AI assistance and player feedback. Findings are experimenta
 - Filter your history to compare similar maps and playing conditions.
 - Compare repeated attempts on the same difficulty.
 
-<!-- Add a Dashboard screenshot here. Example: ![Dashboard](docs/images/dashboard.png) -->
+<!-- Add a Dashboard screenshot here. Example: ![Dashboard](docs/images/dashboard.png) --><img width="2552" height="1365" alt="image" src="https://github.com/user-attachments/assets/26644d93-1ab7-42aa-aa4e-84f627443514" />
+
 
 ### Recent Play
 
@@ -28,7 +29,8 @@ Built with extensive AI assistance and player feedback. Findings are experimenta
 - **Advanced:** explore detailed measurements and breakdowns.
 - Expand or collapse full-width information cards for easier reading.
 
-<!-- Add a Recent Play screenshot here. -->
+<!-- Add a Recent Play screenshot here. --><img width="1138" height="1075" alt="image" src="https://github.com/user-attachments/assets/2eb1cf47-0e40-44fd-aec3-e3901c8a8f10" />
+
 
 ### Aim profiles and training
 
@@ -38,7 +40,8 @@ Built with extensive AI assistance and player feedback. Findings are experimenta
 - Review session training quotas.
 - Optionally organize maps into osu! collections using proficiency rules.
 
-<!-- Add an Aim analysis or training screenshot here. -->
+<!-- Add an Aim analysis or training screenshot here. --> <img width="2536" height="1314" alt="image" src="https://github.com/user-attachments/assets/d186b856-6c3f-475f-8cc7-f5714f7b335b" />
+
 
 ### Practice maps
 
@@ -53,7 +56,8 @@ Built with extensive AI assistance and player feedback. Findings are experimenta
 
 **Slowdown exports require the optional audio setup below.** Replay analysis and spacing-only exports work without it. Suggestions depend on available evidence and map geometry; not every preview contains every variant.
 
-<!-- Add a Practice preview or exported-map screenshot here. -->
+<!-- Add a Practice preview or exported-map screenshot here. --> <img width="1108" height="1018" alt="image" src="https://github.com/user-attachments/assets/e0dda1db-0dfe-41c4-8df4-6491ab836910" />
+
 
 ## Getting started
 
