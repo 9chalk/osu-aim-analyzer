@@ -118,6 +118,7 @@ public sealed class PracticePreviewControl : UserControl
             text.AppendLine(variant.Preview.RequiresAudioRendering ? "Export unavailable until audio rendering is implemented." : "Eligible for spacing/stat export (resources validated when exporting).");
             text.AppendLine($"Source rate {o.SourceClockRate:0.###}× ({100 * (o.SourceClockRate - 1):+0.#;-0.#;0}% BPM); preview BPM {(bpms.Length > 0 ? $"{bpms.Min():0.#}–{bpms.Max():0.#}" : "unavailable")}");
             text.AppendLine($"Requested spacing {o.SpacingMultiplier:0.###}×; achieved head spacing {variant.Preview.AchievedHeadSpacingRatio:0.###}×");
+            if (o.SpacingMultiplier != 1) text.AppendLine($"Fitting: {variant.Preview.RepositionedGroups} groups repositioned, {variant.Preview.RelaxedGroups} groups eased toward original spacing; {variant.Preview.PreservedOutsideAnchors} existing off-screen slider anchors preserved without increasing their original envelope.");
             text.AppendLine($"HP {o.SourceDifficulty.Hp:0.##} → {o.GeneratedDifficulty.Hp:0.##} · CS {o.SourceDifficulty.Cs:0.##} → {o.GeneratedDifficulty.Cs:0.##}");
             text.AppendLine($"AR {o.SourceDifficulty.Ar:0.##} → {o.GeneratedDifficulty.Ar:0.##} · OD {o.SourceDifficulty.Od:0.##} → {o.GeneratedDifficulty.Od:0.##} (serialized; NM effective values)");
             text.AppendLine($"Audio: {(variant.Preview.RequiresAudioRendering ? "rendering required in a later batch" : "unchanged")} · pitch option: {o.PitchPolicy}");

@@ -89,7 +89,8 @@ public static class PracticePackageExporter
             byte[] bytes = generated.ToBytes();
             maps.Add(entry, bytes);
             recipes.Add(new { Entry = entry, GeneratedMd5 = Convert.ToHexString(MD5.HashData(bytes)).ToLowerInvariant(),
-                Sha256 = Hash(bytes), variant.Name, variant.Options, variant.Reason, fresh.AchievedHeadSpacingRatio });
+                Sha256 = Hash(bytes), variant.Name, variant.Options, variant.Reason, fresh.AchievedHeadSpacingRatio,
+                fresh.RepositionedGroups, fresh.RelaxedGroups, fresh.PreservedOutsideAnchors });
         }
         string staging = Path.Combine(Path.GetDirectoryName(destination)!, ".aim-practice-" + id + ".tmp");
         var checksums = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);

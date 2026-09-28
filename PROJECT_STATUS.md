@@ -39,3 +39,7 @@ Documents are capped at 16 MiB, assets at 256 MiB each and 1 GiB total, and reso
 ## TG4 feedback follow-up
 
 IMPLEMENTED; NEEDS USER TEST: Practice now shows export eligibility and the Reduced spacing omission reason beside the buttons. Unavailable Export/Open actions explain why instead of ignoring clicks. The reported screenshot had only slowdown variants; out-of-bounds spacing was correctly rejected. No unsafe transform bypass or audio generation was added. Native suite now contains 102 passing tests, including actual action-click coverage. Test build: publish-tg4-fix/OsuAimAnalyzer.exe.
+
+## Current follow-up: spacing compatibility
+
+IMPLEMENTED; NEEDS USER TEST: rigid group fitting now restores Reduced spacing on the reported source hash c252e57acfbd38812c12023f44882b22. Read-only real-map check: four variants; spacing 0.9115x, one repositioned group, three original off-screen anchors, zero relaxed groups; original bytes unchanged. No personal map files are tracked. 105 tests pass. Launch publish-spacing-fix/OsuAimAnalyzer.exe, rebuild that map's preview and test spacing export/import. TG5 remains NOT STARTED; no item is ACCEPTED.

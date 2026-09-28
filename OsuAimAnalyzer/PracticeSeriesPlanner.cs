@@ -98,7 +98,7 @@ public static class PracticeSeriesPlanner
         }
         else notes.Add("Slowdown + eased AR: omitted without compatible qualifying AR evidence. No unsupported OD reduction is proposed.");
         notes.Add($"{variants.Count} of up to 5 distinct variants available; omissions are explained above.");
-        notes.Add("Spacing is measured between consecutive heads. Slider exits use control-point/repeat proxies; exact rendered curves and automatic fitting are not implemented.");
+        notes.Add("Spacing is measured between consecutive heads. Groups are translated to fit, with spacing eased toward the source when necessary. Slider shapes stay intact; existing off-screen anchors cannot extend their original envelope. Exit positions remain control-point/repeat proxies, not exact rendered curves.");
         return new(source, variants, notes);
     }
 

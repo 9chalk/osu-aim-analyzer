@@ -22,7 +22,7 @@ public class InspectorLayoutTests
                 var export = buttons.Single(b => b.Text.StartsWith("Export spacing"));
                 var open = buttons.Single(b => b.Text == "Open package");
                 var status = control.Controls.OfType<Label>().Single();
-                var unsupported = BeatmapDocument.Parse(BeatmapDocumentTests.Map.Replace("220:120", "900:120"));
+                var unsupported = BeatmapDocument.Parse(BeatmapDocumentTests.Map.Replace("200,100,500", "900,100,500"));
                 var unavailable = PracticeSeriesPlanner.Plan(PracticePlannerTests.Identity(unsupported, ModUtils.DoubleTime), unsupported, 1, Array.Empty<RecommendationEvidence>(), PracticePitchPolicy.PreservePitch);
                 Assert.Equal(2, unavailable.Variants.Count);
                 control.ShowPreview(unavailable, PracticePreviewControl.FormatPreview(unavailable));

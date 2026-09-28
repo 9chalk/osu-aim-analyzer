@@ -216,3 +216,11 @@ Publication is the commit point: cancellation before it cleans owned staging; ca
 ### TG4 availability clarification
 
 A preview can contain only slowdown variants when spacing transformation is unsupported. Such a preview has zero exportable maps in TG4. The Practice toolbar now displays this count and the specific spacing omission reason; Export/Open clicks explain unavailable prerequisites. No package is implied to exist before successful publication. The user's reported two-slowdown/out-of-bounds case is covered by a native UI action test.
+
+## Spacing compatibility correction
+
+IMPLEMENTED; NEEDS USER TEST in osu!: spacing now fits bounded groups (16 objects, split at spinners or source-time gaps over 1 second), translates groups without altering slider vectors, and eases the requested multiplier toward the source when required for feasibility. Only whole-object/group translations are performed; no point clamping or slider-length/repeat changes. Object heads must remain in the playfield. Existing off-screen slider anchors are allowed within each object's original envelope, without increasing its extent; anchors are not treated as exact rendered paths. Exact curve evaluation remains out of scope.
+
+Preview and provenance report repositioned groups, relaxed groups and original off-screen anchors. Achieved head spacing remains authoritative; unchanged/ineffective recipes are still omitted. A read-only check of the reported map, MD5 c252e57acfbd38812c12023f44882b22, now produces four variants. Reduced spacing achieves 0.9115x head spacing, with one repositioned group, no relaxed groups and three existing off-screen anchors. Source bytes were verified unchanged. Personal map content was not added to tests or Git.
+
+Native suite: 105 passed. Synthetic cases cover boundary repositioning, off-screen anchor preservation, full-width-slider relaxation, source-time grouping under combined rate/spacing, deterministic output and unsupported off-screen heads. TG5 is not started.

@@ -3,7 +3,12 @@ using System.Globalization;
 namespace OsuAimAnalyzer;
 
 public sealed record BeatmapTransformResult(BeatmapDocument Document, bool RequiresAudioRendering,
-    double AchievedHeadSpacingRatio, string SpacingMeasurement);
+    double AchievedHeadSpacingRatio, string SpacingMeasurement)
+{
+    public int RepositionedGroups { get; init; }
+    public int RelaxedGroups { get; init; }
+    public int PreservedOutsideAnchors { get; init; }
+}
 
 /// <summary>Pure preview transforms. No source mutation, audio rendering, exporting or star projection.</summary>
 public static class BeatmapTransforms
@@ -117,9 +122,10 @@ public static class BeatmapTransforms
         }
         if (objects.Count == 0 || !redLine) throw new NotSupportedException("A standard map needs hit objects and an uninherited timing point.");
         if (statsChanged && seenStats.Count != 4) throw new NotSupportedException("Explicit HP/CS/AR/OD keys are required for stat edits.");
-        double ratio = spacingChanged ? ReduceSpacing(objects, options.SpacingMultiplier, replacements, token) : 1;
-        return new(source.Replace(replacements), rateChanged, ratio,
-            "Consecutive head-distance ratio; slider exits use the last control point/repeat parity as a proxy, not evaluated curves.");
+        var fit = spacingChanged ? ReduceSpacing(objects, options.SpacingMultiplier, replacements, token) : new SpacingFit(1, 0, 0, 0);
+        return new(source.Replace(replacements), rateChanged, fit.Ratio,
+            "Consecutive head-distance ratio; slider exits use the last control point/repeat parity as a proxy, not evaluated curves.")
+        { RepositionedGroups = fit.Repositioned, RelaxedGroups = fit.Relaxed, PreservedOutsideAnchors = fit.OutsideAnchors };
     }
 
     private static string RetimeEvent(string text, double rate)
@@ -153,6 +159,7 @@ public static class BeatmapTransforms
         public bool Spinner { get; init; }
         public bool Slider { get; init; }
         public bool OddRepeat { get; init; }
+        public double SourceTime { get; init; }
         public PointD Exit => Slider && OddRepeat ? Points[^1] : Points[0];
         public static Geometry Parse(int line, string[] p)
         {
@@ -175,7 +182,7 @@ public static class BeatmapTransforms
                 odd = repeats % 2 == 1;
             }
             if (kind == 8 && p.Length < 6) throw new FormatException("Missing spinner end.");
-            return new() { Line = line, Fields = p, Points = points, Slider = kind == 2, Spinner = kind == 8, OddRepeat = odd };
+            return new() { Line = line, Fields = p, Points = points, Slider = kind == 2, Spinner = kind == 8, OddRepeat = odd, SourceTime = Number(p[2]) };
         }
     }
 
@@ -187,29 +194,96 @@ public static class BeatmapTransforms
         public double Length => Math.Sqrt(X * X + Y * Y);
     }
 
-    private static double ReduceSpacing(List<Geometry> objects, double multiplier, Dictionary<int, string> replacements, CancellationToken token)
+    private sealed record SpacingFit(double Ratio, int Repositioned, int Relaxed, int OutsideAnchors);
+
+    private static SpacingFit ReduceSpacing(List<Geometry> objects, double multiplier, Dictionary<int, string> replacements, CancellationToken token)
     {
         PointD? previousExit = null, editedExit = null, previousHead = null, editedHead = null;
         double before = 0, after = 0;
-        foreach (var obj in objects)
+        int repositioned = 0, relaxed = 0, outsideAnchors = 0;
+        for (int start = 0; start < objects.Count;)
         {
             token.ThrowIfCancellationRequested();
-            if (obj.Spinner) { previousExit = editedExit = previousHead = editedHead = null; continue; }
-            PointD head = obj.Points[0];
-            PointD desired = previousExit.HasValue ? editedExit!.Value + (head - previousExit.Value) * multiplier : head;
-            // Integer translation preserves every control-point vector, including repeated Bezier anchors.
-            var delta = desired - head;
-            delta = new(Math.Round(delta.X, MidpointRounding.AwayFromZero), Math.Round(delta.Y, MidpointRounding.AwayFromZero));
-            var moved = obj.Points.Select(p => p + delta).ToArray();
-            if (moved.Any(p => !double.IsFinite(p.X) || !double.IsFinite(p.Y) || p.X < 0 || p.X > 512 || p.Y < 0 || p.Y > 384))
-                throw new NotSupportedException("Spacing would place geometry outside the playfield; no silent clamping is performed.");
-            if (previousHead.HasValue) { before += (head - previousHead.Value).Length; after += (moved[0] - editedHead!.Value).Length; }
-            obj.Fields[0] = Format(moved[0].X); obj.Fields[1] = Format(moved[0].Y);
-            if (obj.Slider) obj.Fields[5] = obj.Fields[5].Split('|')[0] + "|" + string.Join('|', moved.Skip(1).Select(p => Format(p.X) + ":" + Format(p.Y)));
-            replacements[obj.Line] = string.Join(',', obj.Fields);
-            previousExit = obj.Exit; editedExit = obj.Exit + delta;
-            previousHead = head; editedHead = moved[0];
+            if (objects[start].Spinner) { previousExit = editedExit = previousHead = editedHead = null; start++; continue; }
+            int end = start + 1;
+            // Bound accumulated slider-exit drift; pauses and spinners start new patterns.
+            while (end < objects.Count && end - start < 16 && !objects[end].Spinner &&
+                objects[end].SourceTime - objects[end - 1].SourceTime <= 1000) end++;
+            var group = objects.GetRange(start, end - start);
+            foreach (var obj in group)
+            {
+                var head = obj.Points[0];
+                if (head.X < 0 || head.X > 512 || head.Y < 0 || head.Y > 384)
+                    throw new NotSupportedException("Source object heads outside the playfield are not supported for spacing edits.");
+                outsideAnchors += obj.Points.Skip(1).Count(p => p.X < 0 || p.X > 512 || p.Y < 0 || p.Y > 384);
+            }
+
+            (PointD[] Deltas, PointD Min, PointD Max) Layout(double rate)
+            {
+                var deltas = new PointD[group.Count];
+                double minX = double.NegativeInfinity, maxX = double.PositiveInfinity;
+                double minY = double.NegativeInfinity, maxY = double.PositiveInfinity;
+                for (int i = 0; i < group.Count; i++)
+                {
+                    token.ThrowIfCancellationRequested();
+                    var obj = group[i];
+                    if (i > 0)
+                    {
+                        var prev = group[i - 1];
+                        var desired = prev.Exit + deltas[i - 1] + (obj.Points[0] - prev.Exit) * rate;
+                        var delta = desired - obj.Points[0];
+                        deltas[i] = new(Math.Round(delta.X, MidpointRounding.AwayFromZero), Math.Round(delta.Y, MidpointRounding.AwayFromZero));
+                    }
+                    // A whole-slider translation preserves shape/length. Existing off-screen anchors
+                    // may stay outside, but cannot extend the object's original envelope further.
+                    double left = Math.Min(0, obj.Points.Min(p => p.X)), right = Math.Max(512, obj.Points.Max(p => p.X));
+                    double top = Math.Min(0, obj.Points.Min(p => p.Y)), bottom = Math.Max(384, obj.Points.Max(p => p.Y));
+                    for (int p = 0; p < obj.Points.Count; p++)
+                    {
+                        var moved = obj.Points[p] + deltas[i];
+                        minX = Math.Max(minX, (p == 0 ? 0 : left) - moved.X);
+                        maxX = Math.Min(maxX, (p == 0 ? 512 : right) - moved.X);
+                        minY = Math.Max(minY, (p == 0 ? 0 : top) - moved.Y);
+                        maxY = Math.Min(maxY, (p == 0 ? 384 : bottom) - moved.Y);
+                    }
+                }
+                return (deltas, new(Math.Ceiling(minX), Math.Ceiling(minY)), new(Math.Floor(maxX), Math.Floor(maxY)));
+            }
+            bool Fits((PointD[] Deltas, PointD Min, PointD Max) layout) => layout.Min.X <= layout.Max.X && layout.Min.Y <= layout.Max.Y;
+            var layout = Layout(multiplier);
+            if (!Fits(layout))
+            {
+                // Keep a known feasible layout throughout the bounded search. Never distort points.
+                double lo = multiplier, hi = 1;
+                layout = Layout(hi);
+                if (!Fits(layout)) throw new NotSupportedException("Source geometry cannot be translated safely.");
+                for (int step = 0; step < 32; step++)
+                {
+                    double mid = (lo + hi) / 2;
+                    var candidate = Layout(mid);
+                    if (Fits(candidate)) { hi = mid; layout = candidate; } else lo = mid;
+                }
+                relaxed++;
+            }
+            var first = group[0].Points[0];
+            var wanted = previousExit.HasValue ? editedExit!.Value + (first - previousExit.Value) * multiplier - first : new PointD(0, 0);
+            wanted = new(Math.Round(wanted.X, MidpointRounding.AwayFromZero), Math.Round(wanted.Y, MidpointRounding.AwayFromZero));
+            var shift = new PointD(Math.Clamp(wanted.X, layout.Min.X, layout.Max.X), Math.Clamp(wanted.Y, layout.Min.Y, layout.Max.Y));
+            if (shift != wanted) repositioned++;
+            for (int i = 0; i < group.Count; i++)
+            {
+                var obj = group[i];
+                var delta = layout.Deltas[i] + shift;
+                var moved = obj.Points.Select(p => p + delta).ToArray();
+                if (previousHead.HasValue) { before += (obj.Points[0] - previousHead.Value).Length; after += (moved[0] - editedHead!.Value).Length; }
+                obj.Fields[0] = Format(moved[0].X); obj.Fields[1] = Format(moved[0].Y);
+                if (obj.Slider) obj.Fields[5] = obj.Fields[5].Split('|')[0] + "|" + string.Join('|', moved.Skip(1).Select(p => Format(p.X) + ":" + Format(p.Y)));
+                replacements[obj.Line] = string.Join(',', obj.Fields);
+                previousExit = obj.Exit; editedExit = obj.Exit + delta;
+                previousHead = obj.Points[0]; editedHead = moved[0];
+            }
+            start = end;
         }
-        return before > 0 ? after / before : 1;
+        return new(before > 0 ? after / before : 1, repositioned, relaxed, outsideAnchors);
     }
 }

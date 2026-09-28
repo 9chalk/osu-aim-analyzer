@@ -13,3 +13,11 @@ Format references checked during implementation: [official .osu specification](h
 ## TG4 availability feedback fix
 
 The user's screenshot showed two slowdown variants and no Reduced spacing result: spacing was rejected for out-of-bounds geometry. Export/Open appeared inert because neither operation was available. The Practice page now shows the exportable count and the actual Reduced spacing omission reason beside the toolbar. Clicking an unavailable action explains the prerequisite; package-open failures appear there too. Unsupported transforms remain blocked. A new STA regression exercises real button clicks for this two-slowdown case and dispatch for an eligible spacing preview. No TG5 implementation is included.
+
+## Spacing compatibility fix
+
+- Added bounded pattern fitting without slider distortion or control-point clamping. Existing off-screen slider anchors preserve their original envelope; off-screen heads remain unsupported.
+- Preview and exported provenance report repositioned/relaxed groups and existing off-screen anchors.
+- The exact reported Determinate map (MD5 c252e57acfbd38812c12023f44882b22) now produces Reduced spacing at 0.9115x achieved head spacing in a read-only check. Original bytes stayed unchanged. No personal map asset was committed.
+- 105 tests pass. Manual gate: rebuild the preview on that map, export Reduced spacing and verify slider shapes/audio/background and original-map preservation in osu!.
+- New test executable: bin/Release/net8.0-windows/win-x64/publish-spacing-fix/OsuAimAnalyzer.exe. TG5 is not started.

@@ -134,9 +134,44 @@ public class BeatmapDocumentTests
     }
 
     [Fact]
-    public void Spacing_RejectsOutOfBoundsInsteadOfClampingSliderShape()
+    public void Spacing_PreservesExistingOffscreenAnchorsWithoutClampingShape()
     {
         var doc = BeatmapDocument.Parse(Map.Replace("220:120", "900:120"));
+        var result = BeatmapTransforms.Apply(doc, Options(spacing: .5));
+        Assert.Equal(2, result.PreservedOutsideAnchors);
+        Assert.Contains("B|850:120|850:120|190:100", result.Document.ToString());
+        Assert.Equal(.5, result.AchievedHeadSpacingRatio, 8);
+    }
+
+    [Fact]
+    public void Spacing_RepositionsBoundaryPatternAsRigidSliderTranslations()
+    {
+        var doc = BeatmapDocument.Parse(Map[..Map.IndexOf("[HitObjects]", StringComparison.Ordinal)] + "[HitObjects]\n500,100,101,1,0\n100,100,500,2,0,L|480:100,1,380\n500,100,900,1,0");
+        var result = BeatmapTransforms.Apply(doc, Options(spacing: .5));
+        Assert.Equal(1, result.RepositionedGroups);
+        Assert.Equal(0, result.RelaxedGroups);
+        Assert.Contains("122,100,500,2,0,L|502:100,1,380", result.Document.ToString());
+        Assert.All(BeatmapParser.ParseDocument(result.Document).HitObjects, h => Assert.InRange(h.X, 0, 512));
+        Assert.InRange(result.AchievedHeadSpacingRatio, 0, .99);
+        var combined = BeatmapTransforms.Apply(doc, Options(rate: .5, spacing: .5));
+        Assert.Equal(result.AchievedHeadSpacingRatio, combined.AchievedHeadSpacingRatio);
+        Assert.Equal(result.Document.ToString(), BeatmapTransforms.Apply(doc, Options(spacing: .5)).Document.ToString());
+    }
+
+    [Fact]
+    public void Spacing_RelaxesImpossibleGroupWithoutDistortingFullWidthSliders()
+    {
+        var doc = BeatmapDocument.Parse(Map[..Map.IndexOf("[HitObjects]", StringComparison.Ordinal)] + "[HitObjects]\n512,100,101,1,0\n0,100,500,2,0,L|512:100,1,512\n0,100,900,2,0,L|512:100,1,512");
+        var result = BeatmapTransforms.Apply(doc, Options(spacing: .5));
+        Assert.Equal(1, result.RelaxedGroups);
+        Assert.Equal(2, result.Document.Lines.Count(l => l.Text.Contains("0,100,") && l.Text.Contains("L|512:100,1,512")));
+        Assert.All(BeatmapParser.ParseDocument(result.Document).HitObjects, h => Assert.InRange(h.X, 0, 512));
+    }
+
+    [Fact]
+    public void Spacing_StillRejectsOffscreenObjectHeads()
+    {
+        var doc = BeatmapDocument.Parse(Map.Replace("200,100,500", "900,100,500"));
         Assert.Throws<NotSupportedException>(() => BeatmapTransforms.Apply(doc, Options(spacing: .5)));
     }
 

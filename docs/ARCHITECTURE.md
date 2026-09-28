@@ -60,3 +60,7 @@ PracticePackageExporter owns validation, staging, archive verification, provenan
 BeatmapResources is the shared explicit-resource parser for previews and export. Export additionally inspects .osb resources and retains conventional local sample banks, without copying original difficulties or introducing a new Songs index. Unknown resource-affecting constructs fail closed. Byte hashes are checked in the staged ZIP and against source assets before same-directory publication. Provenance lives in the package JSON; no database migration is introduced.
 
 PracticeExportSelectionForm makes the incomplete rate-free subset explicit. MainForm reuses PracticePreviewSession cancellation/version checks for export and suppresses late progress/results. Open package is user-triggered shell import after publication; existing resolver Songs watchers handle subsequent imports. No automatic osu! launch or source-map overwrite occurs. Final import behavior is a manual test gate.
+
+### Native spacing fitting
+
+BeatmapTransforms now owns bounded pattern fitting, using rigid integer translations and a feasible-layout search toward source spacing. Grouping uses original timestamps, including for combined rate edits. Existing slider control-point excursions are bounded by the source object's envelope rather than incorrectly forcing every anchor onto the playfield; heads remain within 512x384. No curve evaluation or point clamping is introduced. Fit counts flow through the preview and existing package provenance, with no new settings, storage or resolver.
