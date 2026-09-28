@@ -82,3 +82,8 @@ Provenance schema 2 adds rendered-audio records and hashes, without any SQLite m
 User feedback explicitly excludes videos and storyboards. BeatmapDocument.WithoutOptionalMedia creates a preserving derived document without known video/storyboard events, commands, variables or storyboard samples. PracticeSeriesPlanner applies it after verifying original identity; PracticePackageExporter applies the same policy before transforms, preview equivalence and resource discovery. Pure BeatmapTransforms retains its strict general-purpose retiming behavior.
 
 The exporter no longer opens/discovers external .osb files. Only retained background/song/gameplay-hit references and conventional gameplay sample banks are packaged. Optional visual assets cannot contribute to package size or block rate exports. Original documents, assets and previously imported packages are never edited or deleted.
+
+
+## Play-scoped repeated-pattern summaries
+
+AimErrorDiagnostics.Analyze still diagnoses/counts all selected transitions with the existing rules. Only streak discovery groups by positive PlayId and orders by time/object within each group. The derived AimCauseStreak now carries PlayId and shared Location text; no persisted data changes. Unknown IDs are excluded from streak inference, not from counts. Tie selection is deterministic (count descending, play ID ascending, then earliest local sequence). Direct UI/prose consumers include play context; profile accessibility and tooltip text retain the full location when the painted label is narrow.

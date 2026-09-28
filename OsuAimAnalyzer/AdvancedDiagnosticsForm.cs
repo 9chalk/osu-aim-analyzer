@@ -160,7 +160,7 @@ public sealed class AdvancedDiagnosticsForm : Form
             ? "No recurring movement cause dominates this run."
             : $"Primary likely cause: {causeSummary.PrimaryCause.ToLowerInvariant()} ({causeSummary.PrimaryShare:0}% of diagnosed problem jumps). {AimErrorDiagnostics.CauseDescription(causeSummary.PrimaryCause)}";
         string streakText = causeSummary.LongestStreak is { Count: >= 3 } streak
-            ? $" Repeated {streak.Cause.ToLowerInvariant()} ×{streak.Count} across objects {streak.StartObject}–{streak.EndObject}: {AimErrorDiagnostics.RepeatedMeaning(streak.Cause)}"
+            ? $" Repeated {streak.Cause.ToLowerInvariant()} ×{streak.Count} in {streak.Location}: {AimErrorDiagnostics.RepeatedMeaning(streak.Cause)}"
             : "";
 
         summary.Text =

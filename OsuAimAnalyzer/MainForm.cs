@@ -2405,7 +2405,7 @@ public sealed class MainForm : Form
             ? "No recurring movement cause dominates."
             : $"Most common likely cause: {causeSummary.PrimaryCause.ToLowerInvariant()} ({causeSummary.PrimaryShare:0}% of diagnosed problem jumps). {AimErrorDiagnostics.CauseDescription(causeSummary.PrimaryCause)}";
         string causeStreak = causeSummary.LongestStreak is { Count: >= 3 } streak
-            ? $" Longest repeated pattern: {streak.Cause.ToLowerInvariant()} ×{streak.Count}. {AimErrorDiagnostics.RepeatedMeaning(streak.Cause)}"
+            ? $" Longest repeated pattern: {streak.Cause.ToLowerInvariant()} ×{streak.Count} in {streak.Location}. {AimErrorDiagnostics.RepeatedMeaning(streak.Cause)}"
             : "";
         string recentDirection = profDelta > 5 || errDelta < -.02
             ? "Your recent form is trending cleaner than the longer window."

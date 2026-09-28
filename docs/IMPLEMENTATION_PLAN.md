@@ -22,7 +22,7 @@ Dependency order: **B1 → B2 → B3 → B4**. B4 is conditional on a requiremen
 
 **Exit:** Application and tests build; new characterization tests pass; mixed-play defect has a documented reproducer; no production code behavior changes or scoring changes. Record actual results rather than assuming the baseline already compiles.
 
-## B2 — Correct play-scoped repeated-pattern aggregation
+## B2 — Correct play-scoped repeated-pattern aggregation (IMPLEMENTED; NEEDS USER TEST)
 
 Covers AIM-008 and the remaining correctness work in AIM-004/AIM-007. Requires B1.
 
@@ -215,3 +215,14 @@ Manual gate: launch publish-tg5/OsuAimAnalyzer.exe; rebuild the selected play's 
 IMPLEMENTED; NEEDS USER TEST. TG5 feedback removes video/storyboard preservation and retiming from future work. BeatmapDocument.WithoutOptionalMedia is shared by the planner/exporter; originals are still hash-verified before deriving the practice document. External .osb discovery/copy and its rate blocker are removed from the production exporter. No new media pipeline, storage or Songs cleanup is added.
 
 The 120-test suite now verifies omission for both spacing-only and full slowdown series, including broken/missing storyboard assets, with background/hitsound/source preservation. Test build: publish-practice-lite/OsuAimAnalyzer.exe. Manually export a map with video/storyboard content; confirm the background and gameplay sounds remain, optional visuals are absent and slowdown audio stays synchronized. TG6 is not started.
+
+
+## B2 implementation record
+
+Completed after the user confirmed the TG5 media-omission build and requested continued work. TG1 supplied the native test foundation/snapshots; this batch added the focused B1/B2 aggregation reproducer before changing production code. Four regression cases failed on the old code, including merging unrelated plays and interruption by another play. This does not claim every broader B1 characterization or B3 manual presentation check is complete.
+
+AimErrorDiagnostics retains aggregate diagnoses/counts and computes candidate streaks independently per positive PlayId, with deterministic tie selection. AimCauseStreak carries PlayId/Location. Direct consumers and profile accessibility/tooltip text show owning-play context. Missing IDs do not establish streaks; duplicate/backward object indices break adjacency, while the original maximum gaps and display count thresholds remain unchanged.
+
+Validation: 132 Release tests pass (12 new), including counts/input/diagnosis preservation, interleaving, gap boundaries, ties, missing IDs and profile reset. Existing snapshots were not regenerated. Build/publish: publish-streak-fix/OsuAimAnalyzer.exe. Manual gate: inspect Aim Analysis's historical Why control breaks panel and history summary, switch history filters, and compare Recent Play/detail summaries. Historical streaks may legitimately shrink or change owner. No status is ACCEPTED.
+
+Next defined work: B3 presentation verification; broader TG6 generation still needs map/category/count scope decisions. No automatic schema migration, downloads or learning/outcome tracking is introduced.

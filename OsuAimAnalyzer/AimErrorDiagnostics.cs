@@ -7,7 +7,11 @@ public sealed record AimCauseDiagnosis(
     double Severity,
     string Explanation);
 
-public sealed record AimCauseStreak(string Cause, int Count, int StartObject, int EndObject, long StartTimeMs, long EndTimeMs);
+public sealed record AimCauseStreak(string Cause, int Count, int StartObject, int EndObject, long StartTimeMs, long EndTimeMs)
+{
+    public long PlayId { get; init; }
+    public string Location => $"play #{PlayId} · objects {StartObject}–{EndObject}";
+}
 
 public sealed class AimCauseSummary
 {
@@ -188,6 +192,16 @@ public static class AimErrorDiagnostics
 
     private static AimCauseStreak? FindLongestStreak(IReadOnlyList<AimCauseDiagnosis> diagnoses)
     {
+        // Unknown IDs cannot establish ownership; retain their counts, not speculative streaks.
+        // Equal-length ties choose the lowest play ID, then earliest time/object in that play.
+        return diagnoses.Where(d => d.Metric.PlayId > 0).GroupBy(d => d.Metric.PlayId)
+            .OrderBy(g => g.Key)
+            .Select(g => FindPlayStreak(g.OrderBy(d => d.Metric.TimeMs).ThenBy(d => d.Metric.ObjectIndex).ToArray()))
+            .Where(s => s is not null).OrderByDescending(s => s!.Count).FirstOrDefault();
+    }
+
+    private static AimCauseStreak? FindPlayStreak(IReadOnlyList<AimCauseDiagnosis> diagnoses)
+    {
         AimCauseStreak? best = null;
         int start = 0;
         while (start < diagnoses.Count)
@@ -196,7 +210,7 @@ public static class AimErrorDiagnostics
             int end = start;
             while (end + 1 < diagnoses.Count &&
                    diagnoses[end + 1].Cause.Equals(diagnoses[start].Cause, StringComparison.OrdinalIgnoreCase) &&
-                   diagnoses[end + 1].Metric.ObjectIndex - diagnoses[end].Metric.ObjectIndex <= 2 &&
+                   (long)diagnoses[end + 1].Metric.ObjectIndex - diagnoses[end].Metric.ObjectIndex is > 0 and <= 2 &&
                    diagnoses[end + 1].Metric.TimeMs - diagnoses[end].Metric.TimeMs <= 1200)
             {
                 end++;
@@ -210,7 +224,7 @@ public static class AimErrorDiagnostics
                     diagnoses[start].Metric.ObjectIndex + 1,
                     diagnoses[end].Metric.ObjectIndex + 1,
                     diagnoses[start].Metric.TimeMs,
-                    diagnoses[end].Metric.TimeMs);
+                    diagnoses[end].Metric.TimeMs) { PlayId = diagnoses[start].Metric.PlayId };
             }
             start = end + 1;
         }

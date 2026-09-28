@@ -29,7 +29,9 @@ public sealed class AimCauseProfileControl : Control
         AccessibleDescription = summary.TotalCount == 0
             ? "No trajectory diagnostics available."
             : $"Primary likely cause {summary.PrimaryCause}. {summary.PrimaryExplanation}";
-        tip.SetToolTip(this, summary.PrimaryExplanation);
+        if (summary.LongestStreak is { } streak)
+            AccessibleDescription += $" Repeated {streak.Cause} ×{streak.Count} in {streak.Location}.";
+        tip.SetToolTip(this, AccessibleDescription);
         Invalidate();
     }
 
@@ -87,12 +89,12 @@ public sealed class AimCauseProfileControl : Control
             using var streakBrush = new SolidBrush(streak.Count >= 4 ? Theme.Bad : Theme.Warn);
             if (compact)
             {
-                string shortStreak = $"REPEAT · {streak.Cause} ×{streak.Count} · obj {streak.StartObject}–{streak.EndObject}";
+                string shortStreak = $"REPEAT · play #{streak.PlayId} · {streak.Cause} ×{streak.Count} · obj {streak.StartObject}–{streak.EndObject}";
                 g.DrawString(shortStreak, eyebrow, streakBrush, new RectangleF(left.Left, left.Bottom - 20, left.Width, 18));
             }
             else
             {
-                string streakText = $"REPEATED PATTERN · {streak.Cause} ×{streak.Count} · objects {streak.StartObject}–{streak.EndObject}";
+                string streakText = $"REPEATED PATTERN · play #{streak.PlayId} · {streak.Cause} ×{streak.Count} · objects {streak.StartObject}–{streak.EndObject}";
                 g.DrawString(streakText, eyebrow, streakBrush, new RectangleF(left.Left, left.Bottom - 54, left.Width, 18));
                 g.DrawString(AimErrorDiagnostics.RepeatedMeaning(streak.Cause), small, mutedBrush,
                     new RectangleF(left.Left, left.Bottom - 36, left.Width, 36));

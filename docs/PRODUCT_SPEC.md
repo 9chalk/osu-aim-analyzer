@@ -2,7 +2,7 @@
 
 ## Current delivery status
 
-TG5 is **IMPLEMENTED; NEEDS USER TEST**. Practice can export selected slowdown and spacing variants with rendered audio. Following user feedback, generated practice maps omit videos, storyboards and their assets while preserving the background and gameplay audio. No item is ACCEPTED. The dated batch records below describe what was available at each stage; TG5 supersedes the earlier audio/export deferrals. TG6 remains deferred.
+TG5 and B2 (play-scoped historical streaks) are **IMPLEMENTED; NEEDS USER TEST**. Practice can export selected slowdown and spacing variants with rendered audio. Following user feedback, generated practice maps omit videos, storyboards and their assets while preserving the background and gameplay audio. No item is ACCEPTED. The dated batch records below describe what was available at each stage; TG5 supersedes the earlier audio/export deferrals. TG6 remains deferred.
 
 ## Source and scope
 
@@ -100,11 +100,11 @@ The single `net8.0-windows` WinForms project keeps UI, parsing, analysis, and SQ
 
 ### AIM-008 — Isolate streaks by play
 
-- **Origin/status:** Code-review finding; not runtime-reproduced. `Analyze` sorts all input by map-relative `TimeMs`; `FindLongestStreak` checks cause, object gap, and time gap without checking `PlayId`. `MainForm` passes mixed-play `data.Transitions` into the lifetime profile and summary. `TransitionMetric` already has `PlayId`, but `AimCauseStreak` does not carry it.
+- **Origin/status:** Review finding, reproduced by synthetic regressions and fixed in B2. IMPLEMENTED; NEEDS USER TEST. Streak discovery now groups valid PlayId values before ordering within each play, and AimCauseStreak carries its owning play. Overall counts still aggregate the selected history.
 - **Required outcome:** Compute candidate streaks per play, then select a lifetime result without combining plays. Retain the owning play so object ranges have context. Keep overall cause counts aggregated across the selected history.
 - **Touches:** Diagnostic aggregation/result contracts, lifetime consumers, profile and summary rendering.
 - **Dependencies:** Existing AIM-004 behavior; prerequisite for its historical correctness and AIM-007 verification.
-- **Difficulty/risk:** Medium; low schema risk if results remain derived. Changing streak output is a future behavior fix, not part of this documentation task.
+- **Difficulty/risk:** Medium; low schema risk if results remain derived. The B2 correction changes derived streak output and its presentation, without a database migration.
 - **Acceptance:** Two plays with overlapping times/indices cannot form one streak; interleaved records do not split a valid within-play streak; single-play results and aggregate cause counts remain stable.
 
 ## Duplicates, contradictions, and assumptions
@@ -250,3 +250,10 @@ Verification: 120 native tests pass, including real synthetic audio frequency/ti
 Practice documents omit video, sprites, animations, storyboard commands/variables and storyboard sound effects before planning/transformation. Export uses the identical policy and does not inspect/include external .osb files or their referenced assets. Missing or unsupported optional visuals no longer block generation. Background images, song audio, breaks, object hitsounds and conventional gameplay sample banks remain. Unrecognized non-optional content still receives normal validation. Original maps and existing packages are untouched; no cleanup of the user's Songs folder is performed.
 
 All 120 tests pass with updated regressions for complete series generation despite absent optional assets, archive omission, background/hitsound retention and original-file preservation. No item is ACCEPTED; TG6 remains deferred.
+
+
+## B2 delivery — play-scoped streak correctness
+
+AIM-008 is IMPLEMENTED; NEEDS USER TEST. AIM-004/AIM-007 historical streak correctness now uses per-play sequences; broader presentation and exact shake-off evidence remain separate. Tests first reproduced false cross-play merging and loss of valid streaks through interleaving. The existing two-object/1,200 ms upper limits remain; object indices must advance, so duplicate/backward objects cannot extend a streak. Clean or different causes break the sequence within its own play.
+
+Equal-length candidates choose the lowest PlayId, then earliest time/object within that play. Unknown/nonpositive IDs contribute to diagnoses/counts but never to streaks because ownership cannot be established. Profile, tooltip/accessibility text, run/detail summaries and lifetime prose identify the owning play and object range. No diagnosis threshold, production scoring, direction label, stored metric or schema change occurs. All 132 tests pass, including unchanged diagnosis snapshots. No item is ACCEPTED; TG6 remains deferred.
