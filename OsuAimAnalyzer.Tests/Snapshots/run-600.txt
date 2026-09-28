@@ -1,0 +1,19 @@
+THIS RUN · NM FARM · JUMP AIM
+Primary issue: Shake-off · 100.0% of comparable jumps · 600/1000 (inconsistent) overall control
+
+No demand variable is strongly separated from your controlled history on similar maps. This run looks more like execution variance than one obvious map-demand mismatch.
+
+MAIN TRAINING VOLUME
+This exact map is inside your useful main-volume control band (600/1000 (inconsistent)). Keep maps like this in rotation while the diagnosed error rate falls and the top limiter improves.
+
+LIMIT TESTING
+This map is challenging but still trainable. It can be occasional limit work, but it is also close enough to controlled play to keep in main volume.
+
+NEXT OBJECTIVE
+Call this category controlled when a recent block of similar maps averages at least 783 proficiency and the shake-off rate no longer rises materially above your category baseline. Mastered begins around 920.
+
+RECENT TRAINING RESPONSE
+• Practice [Easy] [NM] preceded this retest (160 vs 180 BPM (-11%), 170px vs 180px spacing (-6%), AR 9.0 vs 9.0); target proficiency changed +100 from the previous same-map-family run.
+These are sequence associations: they show what preceded the change, not guaranteed causality.
+
+Confidence values are evidence scores from your own history (effect size + separation from controlled maps + sample support), not literal causal probabilities.

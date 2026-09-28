@@ -77,7 +77,7 @@ dotnet build OsuAimAnalyzer/OsuAimAnalyzer.csproj
 dotnet run --project OsuAimAnalyzer/OsuAimAnalyzer.csproj
 ```
 
-Proposed B1 test-project path and command (not present today):
+Native test-project path and command (introduced in TG1):
 
 ```powershell
 dotnet test OsuAimAnalyzer.Tests/OsuAimAnalyzer.Tests.csproj
@@ -97,7 +97,7 @@ Use `OsuAimAnalyzer\build-release.bat` for a release/publish smoke check when sh
 
 This TG sequence is the authoritative schedule for the newly requested supplemental-map workflow, superseding the audit's generic T0–T5 capability roadmap. Preserve original B1–B4 diagnostics work; do not renumber AIM IDs. Toolkit code stays read-only under reference/. Audit/plan changes do not authorize implementation.
 
-### TG1 — Shared contracts and native test foundation (ready to begin)
+### TG1 — Shared contracts and native test foundation (IMPLEMENTED; NEEDS USER TEST)
 
 **Scope:** Foundation for AIM-009–AIM-017, especially AIM-010–AIM-013. Reuse B1's separate native test project approach and public model boundaries. Define immutable source identity, transform options (base/effective/generated units), structured recommendation evidence and durable generation-result contracts. Characterize existing mod/AR/CS/rate math and diagnosis outputs before extracting shared helpers. Expose structured run-level diagnosis without changing the existing prose or scoring. No map writes, audio tools, schema migration or new UI.
 
@@ -148,4 +148,15 @@ TG1 → TG2 → TG3 → TG4 → TG5; TG6 is deferred. T1 from the audit (discove
 
 ## Repository isolation and release gate
 
-The branch is feature/toolkit-integration, based on master at adc29a1. Ignore reference/ and the local Toolkit archive, and retain AGENTS.md's read-only boundary. Audit completion is static review, not runtime certification. No source from reference/ belongs in the planning commit. Before each future feature commit, review staged paths and confirm no reference/source archive was included. Run native build/tests appropriate to the change and report results. Initial batch ready for authorization: **TG1 — Shared contracts and native test foundation**; no feature work has begun.
+The branch is feature/toolkit-integration, based on master at adc29a1. Ignore reference/ and the local Toolkit archive, and retain AGENTS.md's read-only boundary. Audit completion is static review, not runtime certification. No source from reference/ belongs in the planning commit. Before each future feature commit, review staged paths and confirm no reference/source archive was included. Run native build/tests appropriate to the change and report results. TG1 is IMPLEMENTED and NEEDS USER TEST. TG2 is NOT STARTED and requires a separate implementation request.
+
+## TG1 completion record — 2026-09-28 UTC
+
+- IMPLEMENTED: immutable PracticeSourceIdentity, SerializedDifficulty, PracticeTransformOptions and PublishedPracticePackage contracts. Source identity snapshots existing resolver output; it is not another resolver. Rate is relative to source map time; played mods are retained as context, never automatically baked in. Explicit pitch/stat values avoid deciding unresolved product defaults.
+- IMPLEMENTED: RunDiagnosisResult and immutable RecommendationEvidence with numeric medians/quartiles, units, counts, confidence, lift and explanation. Existing BuildRunDiagnosis delegates to the same computation and returns its unchanged text. Already-loaded and database-backed inputs share one implementation.
+- IMPLEMENTED: separate Windows-targeted xUnit project; 43 cases covering snapshots, numerical semantics, validation, immutability, synthetic history, in-memory SQLite and empty/clean/evidence-bearing diagnosis. Four text snapshots were captured from the pre-refactor implementation and retained as regression fixtures.
+- VERIFIED: baseline and updated application builds succeed; Release tests pass 43/43; Windows x64 self-contained single-file publish succeeds. Existing WFAC010 high-DPI warning remains, intentionally outside TG1.
+- NEEDS USER TEST: real-history Recent Play and detailed Diagnosis regression smoke checks; no interactive UI verification claimed. No item is ACCEPTED.
+- TG2 NOT STARTED: no preserving parser, geometry/rate transformation, generation, audio dependency, new UI, scoring change or schema migration. B2 streak correction is still separate.
+
+Contracts validate finite/nonnegative difficulty values and positive finite rate/spacing; supported export ranges are future validation, not silently clamped here. PublishedPracticePackage carries only an absolute package path and archive entry names; a future exporter must ensure actual publication and durable storage. Source MD5/path validation does not detect later file edits; future generation must revalidate content. Controlled evidence retains the current engine's high-percentile fallback when controlled samples are sparse. Sequence-response messages remain associations; TG1 adds no causal learning.

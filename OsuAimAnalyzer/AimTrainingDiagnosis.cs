@@ -11,6 +11,11 @@ public sealed class AimCategoryVolume
 
 public sealed class AimDiagnosisFactor
 {
+    public string UnitKind { get; init; } = "";
+    public double ObservedMedian { get; init; }
+    public double ControlledMedian { get; init; }
+    public double ControlledLowerQuartile { get; init; }
+    public double ControlledUpperQuartile { get; init; }
     public string Metric { get; init; } = "";
     public double Confidence { get; init; }
     public string Direction { get; init; } = "";
@@ -96,8 +101,25 @@ public static class AimTrainingDiagnosisEngine
     }
 
     public static string BuildRunDiagnosis(PlayRow play, IReadOnlyList<TransitionMetric> currentTransitions, AnalyzerDatabase database, IReadOnlyList<PlayRow> history)
+        => BuildRunDiagnosisData(play, currentTransitions, database, history).DisplayText;
+
+    public static RunDiagnosisResult BuildRunDiagnosisData(PlayRow play, IReadOnlyList<TransitionMetric> currentTransitions, AnalyzerDatabase database, IReadOnlyList<PlayRow> history)
+        => BuildRunDiagnosisCore(play, currentTransitions, history, ids => database.LoadTransitions(ids));
+
+    /// <summary>Uses already-loaded history; shares all classification and formatting with the database path.</summary>
+    public static RunDiagnosisResult BuildRunDiagnosisData(PlayRow play, IReadOnlyList<TransitionMetric> currentTransitions,
+        IReadOnlyList<PlayRow> history, IReadOnlyList<TransitionMetric> historyTransitions)
+        => BuildRunDiagnosisCore(play, currentTransitions, history, ids =>
+        {
+            var selectedIds = ids.ToHashSet();
+            return historyTransitions.Where(t => selectedIds.Contains(t.PlayId)).ToList();
+        });
+
+    private static RunDiagnosisResult BuildRunDiagnosisCore(PlayRow play, IReadOnlyList<TransitionMetric> currentTransitions,
+        IReadOnlyList<PlayRow> history, Func<IEnumerable<long>, List<TransitionMetric>> loadTransitions)
     {
-        if (currentTransitions.Count == 0) return "No transition telemetry is available for this run.";
+        if (currentTransitions.Count == 0)
+            return new RunDiagnosisResult(play.Id, false, "", "", null, Array.Empty<string>(), "No transition telemetry is available for this run.");
 
         string category = Categories
             .Select(c => (Category: c, Count: currentTransitions.Count(t => DiagnosticsEngine.MatchesPreset(play, t, c))))
@@ -115,7 +137,7 @@ public static class AimTrainingDiagnosisEngine
         string selectionKey = causeSummary.PrimaryCause == AimErrorDiagnostics.Clean ? "direction:" + cause : "cause:" + cause;
 
         var comparisonPlays = history.Where(p => p.Id != play.Id && (category == "All aim" || DiagnosticsEngine.PlayMatchesPreset(p, category))).ToList();
-        var comparisonTransitions = comparisonPlays.Count == 0 ? new List<TransitionMetric>() : database.LoadTransitions(comparisonPlays.Select(p => p.Id));
+        var comparisonTransitions = comparisonPlays.Count == 0 ? new List<TransitionMetric>() : loadTransitions(comparisonPlays.Select(p => p.Id));
         var playById = comparisonPlays.GroupBy(p => p.Id).ToDictionary(g => g.Key, g => g.First());
         var rows = new List<Row>();
         foreach (var t in comparisonTransitions)
@@ -170,7 +192,7 @@ public static class AimTrainingDiagnosisEngine
         }
         sb.AppendLine();
         sb.Append("Confidence values are evidence scores from your own history (effect size + separation from controlled maps + sample support), not literal causal probabilities.");
-        return sb.ToString();
+        return new RunDiagnosisResult(play.Id, true, category, selectionKey, diagnosis, response, sb.ToString());
     }
 
     private static AimCategoryDiagnosis BuildDiagnosis(List<Row> rows, string selectionKey, string category, long? focusPlayId)
@@ -276,6 +298,11 @@ public static class AimTrainingDiagnosisEngine
 
         return new AimDiagnosisFactor
         {
+            UnitKind = spec.UnitKind,
+            ObservedMedian = selectedMedian,
+            ControlledMedian = comfortMedian,
+            ControlledLowerQuartile = q25,
+            ControlledUpperQuartile = q75,
             Metric = spec.Name,
             Confidence = confidence,
             Direction = direction,

@@ -164,3 +164,11 @@ AIM-001–AIM-008 remain ALREADY EXISTS/native correctness work. Toolkit has no 
 Generalize one settings/path owner, resolver/hash index, selected-play context, time/mod model, structured diagnosis API, preview-job lifecycle, document adapter and exporter. No parallel database or Toolkit application shell. Merger, flips, random backgrounds and original-mapset writes are audit opportunities, not this backlog's requested features.
 
 Open choices: exact five versus approximate target; useful recipe/target bands; pitch and stat-compensation defaults; base map versus baked played mods; low-evidence behavior; and the later diagnostics scope. Preserve original song/background; use difficulty names and fresh generated identities for distinction. Label suggestions as association-based until actual improvement outcomes are defined. Existing stored diagnoses and scores must not change merely because generation is added.
+
+## TG1 implementation status — 2026-09-28 UTC
+
+TG1 infrastructure is **IMPLEMENTED; NEEDS USER TEST**. None of AIM-009–AIM-017's complete user-facing generation features is implemented or accepted. The foundation portions of AIM-009/AIM-010 (source identity and structured run evidence), AIM-011–AIM-013 (explicit option contracts), and AIM-016 (published-package result contract) are IMPLEMENTED only; transformation/export/UI behavior remains deferred.
+
+The engine now exposes BuildRunDiagnosisData with detached RunDiagnosisResult/RecommendationEvidence while preserving BuildRunDiagnosis text. Numeric evidence avoids parsing localized prose. The existing PlayerInsightsEngine.TrainingResponseForRun already reports recent sequence associations; these are preserved in the result, not replaced by a new learning system. ModUtils and AimAnalyzer formulas remain the shared implementation with characterization tests, not copied Toolkit formulas.
+
+Verification: 43 native tests pass, including pre-refactor diagnosis text snapshots, structured/in-memory-database equivalence, invalid contract inputs and mutation isolation. Debug build and Release single-file publish succeed with the pre-existing WFAC010 DPI warning. Manual real-history UI checks are NEEDS USER TEST. See PROJECT_STATUS.md at the repository root and TG1_NOTES.md in OsuAimAnalyzer/ for risks and steps. TG2 is NOT STARTED; no status is ACCEPTED.

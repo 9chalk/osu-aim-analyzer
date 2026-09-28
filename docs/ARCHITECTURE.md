@@ -28,3 +28,11 @@ Generalize SelectedBeatmapReader lifecycle and path discovery only where needed;
 ## Reference and branch boundary
 
 Everything under `reference/` is read-only and Git-ignored. The actual extracted v1.3 source currently lives in `reference/osu-toolkit-1.4`; the differently named requested path is absent. Do not rename/edit reference contents or include them in production commits. A Git ignore rule is not an operating-system write lock; the read-only constraint is a contributor rule in AGENTS.md. Integration planning is isolated on `feature/toolkit-integration`; `master` remains at the baseline commit.
+
+## TG1 implemented boundaries
+
+PracticeContracts.cs adds immutable source/option/package-result values within the existing assembly. No new runtime service, file index, database or writer is introduced. Existing resolver output supplies identity. Options distinguish source serialized difficulty from generated serialized difficulty; effective replay math remains in ModUtils/AimAnalyzer and is tested in place.
+
+AimTrainingDiagnosisEngine.BuildRunDiagnosisData shares its core with the existing text API and supports either database-backed or already-loaded comparison transitions. RunDiagnosisResult exposes copied immutable numeric evidence, detached sequence-response strings and DisplayText. Existing UI callers retain BuildRunDiagnosis, so no new UI wiring is required. Category factor numbers are exposed from calculations already performed; thresholds and formulas are unchanged. Confidence/controlled ranges retain existing association/fallback semantics.
+
+OsuAimAnalyzer.Tests references the application assembly directly, targets Windows/.NET 8 and uses xUnit. Tests use synthetic data, four pre-refactor text snapshots and in-memory SQLite. The previously described prose-only limitation is resolved for run-level factors; the preserving parser, planner, exporter and audio services remain proposals. TG1 is IMPLEMENTED / NEEDS USER TEST, not ACCEPTED.

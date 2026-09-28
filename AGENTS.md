@@ -4,7 +4,7 @@
 
 `OsuAimAnalyzer/` contains a single .NET 8 Windows Forms project, `OsuAimAnalyzer.csproj`, for analyzing osu!standard replays. `Program.cs` starts the app; `MainForm.cs`, other `*Form.cs` files, and `*Control.cs` files implement the UI. Replay and beatmap parsing live in `ReplayReader.cs` and `BeatmapParser.cs`; analysis and scoring live in the engine classes, `ProductionScoring.cs`, `ScoringConfig.cs`, and `TuningConfig.cs`. `AnalyzerDatabase.cs` manages SQLite persistence.
 
-Build/setup scripts, the application manifest, README, references, and version notes are alongside the source. The root ZIP preserves the original v32 source snapshot; edit extracted files. There is currently no test project or dedicated assets directory.
+Build/setup scripts, the application manifest, README, references, and version notes are alongside the source. The root ZIP preserves the original v32 source snapshot; edit extracted files. OsuAimAnalyzer.Tests/ contains xUnit tests and synthetic diagnosis snapshots; there is no dedicated production assets directory.
 
 ## Build, Test, and Development Commands
 
@@ -23,7 +23,7 @@ Follow surrounding C# style: four-space indentation, braces on separate lines, a
 
 ## Testing Guidelines
 
-No automated test framework or coverage threshold is configured. Build changes and manually verify affected workflows with local `.osr` replays and matching `.osu` beatmaps. For UI changes, check startup, resizing, and affected views. For scoring changes, compare results against known inputs. If adding tests, use a separate test project and descriptive names such as `Method_Scenario_ExpectedResult`; document its test command.
+Run all native xUnit tests with `dotnet test OsuAimAnalyzer.Tests/OsuAimAnalyzer.Tests.csproj -c Release`. No coverage threshold is configured. Tests use synthetic inputs and in-memory SQLite, not personal history. Build changes and manually verify affected workflows with local `.osr` replays and matching `.osu` beatmaps. For UI changes, check startup, resizing, and affected views. For scoring changes, compare results against known inputs. Add tests to the existing separate test project using descriptive names such as `Method_Scenario_ExpectedResult`. Diagnosis snapshots were captured before the TG1 refactor; do not regenerate them merely to pass a failing test.
 
 ## Commit & Pull Request Guidelines
 
