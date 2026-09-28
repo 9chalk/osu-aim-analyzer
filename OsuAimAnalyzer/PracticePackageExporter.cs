@@ -14,13 +14,12 @@ public static class PracticePackageExporter
 
     public static async Task<PublishedPracticePackage> ExportAsync(PracticeSourceIdentity source,
         IReadOnlyList<PracticeVariant> selectedVariants, string destination, IEnumerable<string>? forbiddenRoots = null,
-        IProgress<string>? progress = null, CancellationToken token = default)
+        IProgress<string>? progress = null, CancellationToken token = default, IPracticeAudioRenderer? audioRenderer = null)
     {
         token.ThrowIfCancellationRequested();
         var selected = selectedVariants.ToArray();
         if (selected.Length is < 1 or > 5) throw new ArgumentException("Select between one and five variants.");
-        if (selected.Any(v => v.Options.SourceClockRate != 1 || v.Preview.RequiresAudioRendering))
-            throw new NotSupportedException("Rate-changing variants need TG5 audio rendering. Export only the explicitly selected spacing/stat variants.");
+        bool needsAudio = selected.Any(v => v.Options.SourceClockRate != 1);
         string root = Path.GetDirectoryName(source.BeatmapPath)!;
         string[] forbidden = (forbiddenRoots ?? Array.Empty<string>()).ToArray();
         destination = PracticeExportPaths.Destination(destination, root, forbidden);
@@ -49,6 +48,8 @@ public static class PracticePackageExporter
             assets.Add(Path.GetFileName(file));
             assets.AddRange(storyboardResources.Files.Select(r => r.RelativePath));
         }
+        if (needsAudio && inspectedStoryboards.Count > 0)
+            throw new NotSupportedException("Rate export cannot retime external storyboards. Select spacing/stat variants only for this mapset.");
         var assetPaths = new SortedDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (string asset in assets)
         {
@@ -67,36 +68,76 @@ public static class PracticePackageExporter
             if (length > MaximumAssetBytes || total > MaximumPackageBytes) throw new NotSupportedException("Export exceeds the 256 MiB asset or 1 GiB total resource limit.");
         }
         string id = Guid.NewGuid().ToString("N");
-        var maps = new Dictionary<string, byte[]>();
-        var recipes = new List<object>();
-        var distinct = new HashSet<string>();
-        var sourceMap = BeatmapParser.ParseDocument(original);
-        for (int i = 0; i < selected.Length; i++)
-        {
-            var variant = selected[i];
-            if (variant.Name.Length > 100 || variant.Name.Any(char.IsControl)) throw new ArgumentException("Invalid variant name.");
-            var fresh = BeatmapTransforms.Apply(original, variant.Options, token);
-            if (!fresh.Document.ToBytes().SequenceEqual(variant.Preview.Document.ToBytes()))
-                throw new InvalidOperationException("Preview content does not match the source/options. Rebuild the preview.");
-            string transformedHash = Hash(fresh.Document.ToBytes());
-            if (transformedHash == Hash(original.ToBytes()) || !distinct.Add(transformedHash)) throw new ArgumentException("Unchanged or duplicate variants cannot be exported.");
-            string entry = $"practice-{id[..8]}-{i + 1:00}.osu";
-            var generated = fresh.Document.WithMetadata(new Dictionary<string, string>
-            {
-                ["BeatmapID"] = "0", ["BeatmapSetID"] = "-1",
-                ["Version"] = $"{sourceMap.Version} · Practice {i + 1} {variant.Name} {id[..8]}"
-            });
-            byte[] bytes = generated.ToBytes();
-            maps.Add(entry, bytes);
-            recipes.Add(new { Entry = entry, GeneratedMd5 = Convert.ToHexString(MD5.HashData(bytes)).ToLowerInvariant(),
-                Sha256 = Hash(bytes), variant.Name, variant.Options, variant.Reason, fresh.AchievedHeadSpacingRatio,
-                fresh.RepositionedGroups, fresh.RelaxedGroups, fresh.PreservedOutsideAnchors });
-        }
         string staging = Path.Combine(Path.GetDirectoryName(destination)!, ".aim-practice-" + id + ".tmp");
+        string audioDirectory = Path.Combine(Path.GetDirectoryName(destination)!, ".aim-audio-" + id);
+        var ownedAudioFiles = new List<string>();
+        var renderedFiles = new Dictionary<string, string>();
+        var renderedMetadata = new List<object>();
+        var audioJobs = new Dictionary<string, string>();
         var checksums = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        bool ownsStaging = false;
+        bool ownsStaging = false, ownsAudioDirectory = false;
+        string? sourceAudioHash = null;
+        string sourceAudioEntry = resources.Files.Single(r => r.Kind == "audio").RelativePath.Replace('\\', '/');
+        string? audioSnapshot = null;
+        var maps = new Dictionary<string, byte[]>();
         try
         {
+            if (needsAudio)
+            {
+                audioRenderer ??= new PracticeAudioRenderer();
+                if (Directory.Exists(audioDirectory)) throw new IOException("Audio staging directory already exists.");
+                Directory.CreateDirectory(audioDirectory);
+                ownsAudioDirectory = true;
+                audioSnapshot = Path.Combine(audioDirectory, "source" + Path.GetExtension(sourceAudioEntry));
+                await using var input = new FileStream(assetPaths[sourceAudioEntry], FileMode.Open, FileAccess.Read, FileShare.Read, 65536, true);
+                await using var snapshot = new FileStream(audioSnapshot, FileMode.CreateNew, FileAccess.Write, FileShare.None, 65536, true);
+                ownedAudioFiles.Add(audioSnapshot);
+                sourceAudioHash = await CopyHashAsync(input, snapshot, MaximumAssetBytes, token);
+            }
+            var recipes = new List<object>();
+            var distinct = new HashSet<string>();
+            var sourceMap = BeatmapParser.ParseDocument(original);
+            for (int i = 0; i < selected.Length; i++)
+            {
+                var variant = selected[i];
+                if (variant.Name.Length > 100 || variant.Name.Any(char.IsControl)) throw new ArgumentException("Invalid variant name.");
+                var fresh = BeatmapTransforms.Apply(original, variant.Options, token);
+                if (!fresh.Document.ToBytes().SequenceEqual(variant.Preview.Document.ToBytes()))
+                    throw new InvalidOperationException("Preview content does not match the source/options. Rebuild the preview.");
+                string transformedHash = Hash(fresh.Document.ToBytes());
+                if (transformedHash == Hash(original.ToBytes()) || !distinct.Add(transformedHash + (variant.Options.SourceClockRate == 1 ? "" : variant.Options.PitchPolicy.ToString()))) throw new ArgumentException("Unchanged or duplicate variants cannot be exported.");
+                string entry = $"practice-{id[..8]}-{i + 1:00}.osu";
+                var generated = fresh.Document.WithMetadata(new Dictionary<string, string>
+                {
+                    ["BeatmapID"] = "0", ["BeatmapSetID"] = "-1",
+                    ["Version"] = $"{sourceMap.Version} · Practice {i + 1} {variant.Name} {id[..8]}"
+                });
+                if (variant.Options.SourceClockRate != 1)
+                {
+                    string job = sourceAudioHash + "|" + variant.Options.SourceClockRate.ToString("G17", System.Globalization.CultureInfo.InvariantCulture)
+                        + "|" + variant.Options.PitchPolicy + "|" + PracticeAudioRenderer.Distribution;
+                    if (!audioJobs.TryGetValue(job, out string? audioEntry))
+                    {
+                        audioEntry = $"practice-{id}-audio-{audioJobs.Count + 1}.wav";
+                        string audioPath = Path.Combine(audioDirectory, audioEntry);
+                        ownedAudioFiles.Add(audioPath);
+                        progress?.Report("Rendering audio for " + variant.Name + "…");
+                        var rendered = await audioRenderer!.RenderAsync(audioSnapshot!, audioPath, variant.Options.SourceClockRate, variant.Options.PitchPolicy, token);
+                        long length = new FileInfo(audioPath).Length;
+                        total += length;
+                        if (length > MaximumAssetBytes || total > MaximumPackageBytes) throw new IOException("Rendered audio exceeds package resource limits.");
+                        audioJobs.Add(job, audioEntry);
+                        renderedFiles.Add(audioEntry, audioPath);
+                        renderedMetadata.Add(new { Entry = audioEntry, SourceSha256 = sourceAudioHash, variant.Options.SourceClockRate, variant.Options.PitchPolicy, Validation = rendered });
+                    }
+                    generated = generated.WithSectionValues("General", new Dictionary<string, string> { ["AudioFilename"] = audioEntry });
+                }
+                byte[] bytes = generated.ToBytes();
+                maps.Add(entry, bytes);
+                recipes.Add(new { Entry = entry, GeneratedMd5 = Convert.ToHexString(MD5.HashData(bytes)).ToLowerInvariant(),
+                    Sha256 = Hash(bytes), variant.Name, variant.Options, variant.Reason, fresh.AchievedHeadSpacingRatio,
+                    fresh.RepositionedGroups, fresh.RelaxedGroups, fresh.PreservedOutsideAnchors });
+            }
             await using (var output = new FileStream(staging, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None, 65536, true))
             {
                 ownsStaging = true;
@@ -116,14 +157,26 @@ public static class PracticePackageExporter
                         if (inspectedStoryboards.TryGetValue(asset.Key, out string? expected) && checksums[asset.Key] != expected)
                             throw new IOException("Storyboard changed after resource discovery: " + asset.Key);
                     }
+                    if (sourceAudioHash is not null && checksums[sourceAudioEntry] != sourceAudioHash)
+                        throw new IOException("Source audio changed during rendering. Rebuild and retry.");
+                    foreach (var audio in renderedFiles)
+                    {
+                        if (checksums.ContainsKey(audio.Key)) throw new IOException("Audio entry collision.");
+                        await using var input = new FileStream(audio.Value, FileMode.Open, FileAccess.Read, FileShare.Read, 65536, true);
+                        copiedResourceBytes += input.Length;
+                        if (copiedResourceBytes > MaximumPackageBytes) throw new IOException("Package resource limit exceeded.");
+                        await using var target = archive.CreateEntry(audio.Key, CompressionLevel.Optimal).Open();
+                        checksums.Add(audio.Key, await CopyHashAsync(input, target, MaximumAssetBytes, token));
+                    }
                     foreach (var map in maps) await WriteEntryAsync(archive, map.Key, map.Value, checksums, token);
                     byte[] manifest = JsonSerializer.SerializeToUtf8Bytes(new
                     {
-                        SchemaVersion = 1, PackageId = id, CreatedUtc = DateTime.UtcNow,
+                        SchemaVersion = 2, PackageId = id, CreatedUtc = DateTime.UtcNow,
                         Source = new { source.BeatmapHash, source.SelectedPlayId, source.PlayedMods, File = Path.GetFileName(source.BeatmapPath) },
                         Title = sourceMap.Title, Variants = recipes,
-                        Resources = assetPaths.Keys.Select(e => new { Entry = e, Sha256 = checksums[e] }).ToArray(),
-                        Policy = "TG4 spacing/stat only; local sample banks retained; no rate audio rendering."
+                        RenderedAudio = renderedMetadata,
+                        Resources = assetPaths.Keys.Concat(renderedFiles.Keys).Select(e => new { Entry = e, Sha256 = checksums[e] }).ToArray(),
+                        Policy = "Source-relative timing; explicit pitch; local sample banks retained; selected variants only."
                     }, new JsonSerializerOptions { WriteIndented = true });
                     await WriteEntryAsync(archive, "aim-analyzer-provenance.json", manifest, checksums, token);
                 }
@@ -162,6 +215,8 @@ public static class PracticePackageExporter
         finally
         {
             if (ownsStaging && File.Exists(staging)) File.Delete(staging);
+            foreach (string file in ownedAudioFiles) if (File.Exists(file)) File.Delete(file);
+            if (ownsAudioDirectory) Directory.Delete(audioDirectory, recursive: false);
         }
     }
 

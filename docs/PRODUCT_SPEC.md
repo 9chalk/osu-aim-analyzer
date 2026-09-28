@@ -1,5 +1,9 @@
 # Product Specification
 
+## Current delivery status
+
+TG5 is **IMPLEMENTED; NEEDS USER TEST**. Practice can export selected slowdown and spacing variants with rendered audio. No item is ACCEPTED. The dated batch records below describe what was available at each stage; TG5 supersedes the earlier audio/export deferrals. TG6 remains deferred.
+
 ## Source and scope
 
 Source: [osu aim analyzer stuff](https://docs.google.com/document/d/1vg8Xf5UHyvgA7PpsN0DMNJQv_QjLkTa8aduJHUdMCHY/edit), explicitly confirmed by the owner as the intended source despite the earlier title “osu! Aim Analyzer — Ideas, Features & Bugs.” The complete returned document contains one tab, **Tab 1** (`t.0`), headed “Functions and features ideas,” and ends “we did the stuff already above.” This describes the initial snapshot before the later New stuff section (see Updated source and integration scope). Read on 2026-09-28 UTC (2026-09-27 Pacific).
@@ -224,3 +228,16 @@ IMPLEMENTED; NEEDS USER TEST in osu!: spacing now fits bounded groups (16 object
 Preview and provenance report repositioned groups, relaxed groups and original off-screen anchors. Achieved head spacing remains authoritative; unchanged/ineffective recipes are still omitted. A read-only check of the reported map, MD5 c252e57acfbd38812c12023f44882b22, now produces four variants. Reduced spacing achieves 0.9115x head spacing, with one repositioned group, no relaxed groups and three existing off-screen anchors. Source bytes were verified unchanged. Personal map content was not added to tests or Git.
 
 Native suite: 105 passed. Synthetic cases cover boundary repositioning, off-screen anchor preservation, full-width-slider relaxation, source-time grouping under combined rate/spacing, deterministic output and unsupported off-screen heads. TG5 is not started.
+
+
+## TG5 implementation status — 2026-09-28
+
+**IMPLEMENTED; NEEDS USER TEST:** source-relative slowdown audio (AIM-011), explicit pitch/stat policy (AIM-012), selected-series export (AIM-009/AIM-014), Recent Play generation (AIM-015), and preserved title/background with fresh generated identities (AIM-016). AIM-010 evidence policy and AIM-013 spacing behavior are reused unchanged. AIM-017 remains deferred; no item is ACCEPTED.
+
+Practice → Build preview → **Export practice maps…** now permits all supported preview variants. Preserve pitch remains the default; Change pitch with rate lowers pitch during slowdown. Changing pitch invalidates the preview. Export renders only the user's selection and does not silently drop a selected recipe on failure. The planner still offers up to five distinct variants, normally four with sparse evidence; the optional eased-AR recipe requires qualifying evidence. HP/CS/OD and source-relative mod semantics are unchanged.
+
+PracticeAudioRenderer runs the pinned FFmpeg distribution described in AUDIO_RUNTIME.md. MP3/Ogg/WAV input becomes stereo 44.1 kHz PCM16 WAV. The exporter snapshots/hashes source audio, deduplicates within a package by source content/rate/pitch/pipeline, rewrites each generated AudioFilename, and verifies the archive and unchanged original resources before publication. Schema-2 package provenance records rendered durations, pitch/rate, renderer identity and audio checksums. No application database/schema or scoring changes occur.
+
+Renderer failures/cancellation clean owned audio/ZIP staging before publication. Missing tools still allow spacing/stat export; the dialog explicitly counts unavailable rate variants. Rate export rejects external .osb files and unsupported embedded video/storyboard content rather than publishing unsynchronized content. Source and output duration are limited to 30 minutes, further constrained by 256 MiB per asset and 1 GiB total resources. WAV output can make packages much larger than the original compressed song.
+
+Verification: 120 native tests pass, including real synthetic audio frequency/timing, MP3/Ogg decoding, live cancellation, full-series/MainForm export, audio sharing and pitch separation, resource mutation and failure cleanup. Original diagnosis snapshots remain unchanged. The user confirmed the spacing follow-up works. Actual osu! import, synchronization and listening quality for TG5 remain NEEDS USER TEST.

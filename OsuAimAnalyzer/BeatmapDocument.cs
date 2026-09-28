@@ -54,29 +54,32 @@ public sealed class BeatmapDocument
         => new(Lines.Select((l, i) => replacements.TryGetValue(i, out var text) ? l with { Text = text } : l), encoding, preamble);
 
     internal BeatmapDocument WithMetadata(IReadOnlyDictionary<string, string> values)
+        => WithSectionValues("Metadata", values);
+
+    internal BeatmapDocument WithSectionValues(string section, IReadOnlyDictionary<string, string> values)
     {
-        if (Lines.Count(l => l.Text.Trim() == "[Metadata]") != 1)
-            throw new NotSupportedException("Export requires exactly one Metadata section.");
+        if (Lines.Count(l => l.Text.Trim() == "[" + section + "]") != 1)
+            throw new NotSupportedException("Export requires exactly one " + section + " section.");
         var remaining = new Dictionary<string, string>(values);
         var seen = new HashSet<string>();
         var output = new List<BeatmapDocumentLine>();
         string ending = Lines.FirstOrDefault(l => l.Ending.Length > 0)?.Ending ?? "\r\n";
-        int last = Lines.Select((l, i) => (l, i)).Last(pair => pair.l.Section == "Metadata").i;
+        int last = Lines.Select((l, i) => (l, i)).Last(pair => pair.l.Section == section).i;
         for (int i = 0; i < Lines.Count; i++)
         {
             var line = Lines[i];
             int colon = line.Text.IndexOf(':');
-            if (line.Section == "Metadata" && colon > 0 && IsContent(line))
+            if (line.Section == section && colon > 0 && IsContent(line))
             {
                 string key = line.Text[..colon].Trim();
-                if (!seen.Add(key)) throw new NotSupportedException("Duplicate metadata key: " + key);
+                if (!seen.Add(key)) throw new NotSupportedException("Duplicate section key: " + key);
                 if (remaining.Remove(key, out var value)) line = line with { Text = key + ":" + value };
             }
             output.Add(line);
             if (i == last && remaining.Count > 0)
             {
                 if (output[^1].Ending.Length == 0) output[^1] = output[^1] with { Ending = ending };
-                foreach (var pair in remaining) output.Add(new("Metadata", pair.Key + ":" + pair.Value, ending));
+                foreach (var pair in remaining) output.Add(new(section, pair.Key + ":" + pair.Value, ending));
             }
         }
         return new(output, encoding, preamble);

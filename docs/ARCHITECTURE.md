@@ -1,5 +1,7 @@
 # Aim Analyzer Architecture
 
+Current integration state: TG1–TG5 are implemented; the baseline/proposed and numbered batch sections below are historical stages. The TG5 boundary section describes the current audio/export ownership. No scoring or database schema changes were introduced.
+
 ## Current production architecture
 
 This describes the v32 source at baseline `adc29a1`. `OsuAimAnalyzer/OsuAimAnalyzer.csproj` is a single .NET 8 Windows Forms executable. No Toolkit feature integration is implemented. Dependencies include Microsoft.Data.Sqlite and SharpCompress; native song selection optionally uses the existing PowerShell reader and two downloaded native packages.
@@ -64,3 +66,12 @@ PracticeExportSelectionForm makes the incomplete rate-free subset explicit. Main
 ### Native spacing fitting
 
 BeatmapTransforms now owns bounded pattern fitting, using rigid integer translations and a feasible-layout search toward source spacing. Grouping uses original timestamps, including for combined rate edits. Existing slider control-point excursions are bounded by the source object's envelope rather than incorrectly forcing every anchor onto the playfield; heads remain within 512x384. No curve evaluation or point clamping is introduced. Fit counts flow through the preview and existing package provenance, with no new settings, storage or resolver.
+
+
+## TG5 implemented boundaries
+
+PracticeAudioRenderer implements IPracticeAudioRenderer as an isolated, cancellable FFmpeg/ffprobe process boundary. Executables resolve only from tools/ffmpeg beside the app, not PATH. Analysis startup and spacing-only exports do not invoke it. It forces MP3/Ogg/WAV demuxers and file/pipe protocols, validates finite durations, caps predicted PCM size, and applies either atempo or sample-rate pitch change. Process arguments use ArgumentList, diagnostics are bounded/drained, and cancellation kills the child process tree.
+
+PracticePackageExporter remains the sole publication owner. It snapshots source audio under its existing resource size limit, hashes that content, caches rate/pitch/pipeline render jobs within the export, and assigns unique generated WAV entries. BeatmapDocument.WithSectionValues generalizes the existing preserving metadata updater for General.AudioFilename; it does not replace the analysis parser. Source hashes are compared again before atomic publication. Temporary audio and ZIP files are owned by the export request and removed on failure/cancellation.
+
+Provenance schema 2 adds rendered-audio records and hashes, without any SQLite migration. PracticeExportSelectionForm lists supported selected variants; absent binaries explicitly exclude rate variants. MainForm continues using PracticePreviewSession and off-thread work with stale-result/progress guards. External .osb retiming remains unsupported, so selecting any rate variant in such a mapset fails the entire selected export with a reason. No silent partial package is published.

@@ -2670,7 +2670,7 @@ public sealed class MainForm : Form
         var chosen = selection.SelectedVariants;
         using var save = new SaveFileDialog
         {
-            Title = $"Save {chosen.Count} spacing/stat practice map(s)", Filter = "osu! beatmap package (*.osz)|*.osz",
+            Title = $"Save {chosen.Count} practice map(s)", Filter = "osu! beatmap package (*.osz)|*.osz",
             FileName = $"Aim practice {DateTime.Now:yyyy-MM-dd HH-mm-ss}-{Guid.NewGuid().ToString("N")[..6]}.osz",
             AddExtension = true, DefaultExt = "osz", OverwritePrompt = false,
             InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)

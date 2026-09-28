@@ -19,7 +19,7 @@ public class InspectorLayoutTests
                 host.Controls.Add(control); host.Show();
                 control.Reset("Test map");
                 var buttons = control.Controls.OfType<FlowLayoutPanel>().Single().Controls.OfType<Button>().ToArray();
-                var export = buttons.Single(b => b.Text.StartsWith("Export spacing"));
+                var export = buttons.Single(b => b.Text.StartsWith("Export practice"));
                 var open = buttons.Single(b => b.Text == "Open package");
                 var status = control.Controls.OfType<Label>().Single();
                 var unsupported = BeatmapDocument.Parse(BeatmapDocumentTests.Map.Replace("200,100,500", "900,100,500"));
@@ -28,18 +28,18 @@ public class InspectorLayoutTests
                 control.ShowPreview(unavailable, PracticePreviewControl.FormatPreview(unavailable));
                 int dispatched = 0;
                 control.ExportRequested += _ => dispatched++;
-                Assert.Contains("0 exportable", status.Text);
+                Assert.Contains("2 exportable", status.Text);
                 export.PerformClick();
-                Assert.Contains("Nothing exportable", status.Text);
-                Assert.Equal(0, dispatched);
+                Assert.Contains("Export opens", status.Text);
+                Assert.Equal(1, dispatched);
                 open.PerformClick();
                 Assert.Contains("No package has been exported", status.Text);
                 var document = BeatmapDocument.Parse(BeatmapDocumentTests.Map);
                 var available = PracticeSeriesPlanner.Plan(PracticePlannerTests.Identity(document), document, 1, Array.Empty<RecommendationEvidence>(), PracticePitchPolicy.PreservePitch);
                 control.ShowPreview(available, PracticePreviewControl.FormatPreview(available));
-                Assert.Contains("1 exportable", status.Text);
+                Assert.Contains("4 exportable", status.Text);
                 export.PerformClick();
-                Assert.Equal(1, dispatched);
+                Assert.Equal(2, dispatched);
                 control.ShowPublished(new PublishedPracticePackage(available.Source, Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".osz"), new[] { "practice.osu" }));
                 open.PerformClick();
                 Assert.Contains("moved or deleted", status.Text);
@@ -52,8 +52,10 @@ public class InspectorLayoutTests
         if (failure is not null) ExceptionDispatchInfo.Capture(failure).Throw();
     }
 
-    [Fact]
-    public void PracticeExport_MainFormPublishesExplicitSubsetAndEnablesOpen()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void PracticeExport_MainFormPublishesSelectedMapsAndEnablesOpen(bool includeAudio)
     {
         Exception? failure = null;
         var thread = new Thread(() =>
@@ -61,6 +63,7 @@ public class InspectorLayoutTests
             try
             {
                 using var files = new PracticeExportTests();
+                using var audioFiles = new PracticeAudioTests();
                 using var db = new AnalyzerDatabase(":memory:"); db.Initialize();
                 string root = Path.GetDirectoryName(files.OutputPath)!;
                 var paths = new AppPaths { DataDirectory = root, SettingsPath = Path.Combine(root, "settings"), DatabasePath = ":memory:", CollectionStatePath = Path.Combine(root, "collections") };
@@ -71,10 +74,10 @@ public class InspectorLayoutTests
                 using var host = new Form { ClientSize = new Size(650, 720), ShowInTaskbar = false, StartPosition = FormStartPosition.Manual, Location = new Point(-30000, -30000) };
                 host.Controls.Add(control); host.Show();
                 control.Reset("Synthetic export");
-                var series = files.Preview;
-                using var choice = new PracticeExportSelectionForm(series);
-                Assert.Single(choice.SelectedVariants);
-                Assert.Equal("Reduced spacing", choice.SelectedVariants[0].Name);
+                var series = includeAudio ? audioFiles.CreateMap().Item2 : files.Preview;
+                using var choice = new PracticeExportSelectionForm(series, audioAvailable: includeAudio);
+                Assert.Equal(includeAudio ? 4 : 1, choice.SelectedVariants.Count);
+                if (!includeAudio) Assert.Equal("Reduced spacing", choice.SelectedVariants[0].Name);
                 control.ShowPreview(series, PracticePreviewControl.FormatPreview(series));
                 var work = (Task)typeof(MainForm).GetMethod("ExportPracticeToPathAsync", flags)!.Invoke(main, new object[] { series, choice.SelectedVariants, files.OutputPath })!;
                 var timeout = System.Diagnostics.Stopwatch.StartNew();
@@ -82,8 +85,8 @@ public class InspectorLayoutTests
                 Assert.True(work.IsCompletedSuccessfully, work.Exception?.ToString());
                 Application.DoEvents(); // queued progress must not overwrite the published result
                 var readout = control.Controls.OfType<TextBox>().Single();
-                Assert.Contains("Exported 1", readout.Text);
-                Assert.Contains("Slowdown variants were not included", readout.Text);
+                Assert.Contains($"Exported {(includeAudio ? 4 : 1)}", readout.Text);
+                Assert.Contains("Only your explicitly selected variants", readout.Text);
                 var open = control.Controls.OfType<FlowLayoutPanel>().Single().Controls.OfType<Button>().Single(b => b.Text == "Open package");
                 Assert.True(open.Enabled);
                 Assert.True(File.Exists(files.OutputPath));

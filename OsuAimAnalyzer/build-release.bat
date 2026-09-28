@@ -9,6 +9,8 @@ if errorlevel 1 (
   exit /b 1
 )
 
+if not exist "tools\ffmpeg\ffmpeg.exe" echo Audio tools missing. Run powershell -File setup_audio.ps1 for slowdown export support.
+
 dotnet restore
 if errorlevel 1 goto :fail
 

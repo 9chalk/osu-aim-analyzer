@@ -10,6 +10,7 @@ Build/setup scripts, the application manifest, README, references, and version n
 
 Use Windows with the .NET 8 SDK. From the repository root:
 
+- `powershell -File OsuAimAnalyzer/setup_audio.ps1` installs the pinned, checksum-verified audio tools needed for slowdown export and native audio tests; see `docs/AUDIO_RUNTIME.md`.
 - `dotnet restore OsuAimAnalyzer/OsuAimAnalyzer.csproj` restores dependencies.
 - `dotnet build OsuAimAnalyzer/OsuAimAnalyzer.csproj` compiles the application.
 - `dotnet run --project OsuAimAnalyzer/OsuAimAnalyzer.csproj` launches the UI.

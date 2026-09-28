@@ -2,44 +2,38 @@
 
 ## Current batch
 
-TG4 — Staged spacing/stat package export: **IMPLEMENTED; NEEDS USER TEST**. TG5 is NOT STARTED. No item is ACCEPTED.
+TG5 — Audio rendering and complete selected-map series: **IMPLEMENTED; NEEDS USER TEST**. No item is ACCEPTED. TG6 remains deferred.
 Branch: feature/toolkit-integration. Master baseline remains adc29a1.
-The user confirmed TG3's preview looked alright and requested continued development.
+The user confirmed the spacing compatibility follow-up works and requested continued development.
 
 ## Delivered
 
-Practice → Build preview → Export spacing/stat maps… lets the user explicitly select eligible rate-1 variants and choose a new .osz destination. The current planner normally offers Reduced spacing alone for export. Slowdown variants remain unavailable until TG5 and are counted/explained in the dialog; this is not presented as a complete series.
+Recent Play → Practice → Build preview → Export practice maps… now exports selected slowdown and spacing variants. Preserve pitch is the default; Change pitch with rate is explicit. The existing planner normally offers four variants with sparse evidence, up to five when eased AR has support, and explains omissions. Original source-relative mod/stat rules remain unchanged.
 
-One shared exporter supports multiple spacing/stat variants, source/options revalidation, preserving metadata changes, nested resources, basic unchanged storyboards/animations, conservative local hitsound-bank inclusion, provenance JSON, ZIP/hash verification and non-overwriting same-directory publication. Open package is a separate user-triggered import action. There is no audio renderer, new schema, scoring change or source-map write.
+One shared staged exporter now renders deduplicated audio through a pinned FFmpeg distribution, updates generated AudioFilename references, records schema-2 package provenance, verifies hashes and publishes without overwriting. Cancellation or failure cleans owned staging. Open package remains an explicit user action. Original mapsets, replay history, scoring and SQLite schema are unchanged. See docs/AUDIO_RUNTIME.md.
 
 ## Verification
 
-- Restore and Debug application build: succeeded.
-- Release suite: 101 passed, zero failed/skipped (87 existing plus 14 new).
-- Windows x64 self-contained single-file publish: succeeded in OsuAimAnalyzer/bin/Release/net8.0-windows/win-x64/publish-tg4/.
+- Restore and Debug build: succeeded.
+- Release tests: 120 passed, zero failed/skipped; 15 added since the spacing build.
+- Windows x64 self-contained publish: OsuAimAnalyzer/bin/Release/net8.0-windows/win-x64/publish-tg5/.
 - Existing WFAC010 high-DPI warning remains.
-- Tests cover selected multi-difficulty archive contents, fresh IDs/version names, title/background bytes, nested .osb/animation resources, hitsound banks, source immutability, collisions, missing/changed files, cancellation cleanup, unsafe paths/junctions and MainForm publish/open state.
-- Tests use synthetic asset bytes: actual osu! import, separate-mapset behavior and media playback remain manual checks.
-- Reference hashes unchanged; no reference files tracked. Master baseline preserved.
+- Reference hash comparison: zero changes; no reference files tracked. Master baseline remains adc29a1. Published audio tools match the verified local installation.
+- Native tests cover pitch/frequency, duration/timestamp bursts, MP3/Ogg input, running-process cancellation, full-series/MainForm export, audio sharing and pitch separation, source mutation and cleanup. Existing diagnosis snapshots pass unchanged.
+- Actual osu! import/listening is not automated; it remains NEEDS USER TEST.
 
 ## Manual checks
 
-1. Close the prior app and launch publish-tg4/OsuAimAnalyzer.exe.
-2. Select a known play, open Practice and Build preview. Choose Export spacing/stat maps… and confirm the dialog explicitly excludes slowdown variants.
-3. Save the selected Reduced spacing map to a new local .osz path outside Songs. Original map files should remain unchanged.
-4. Optionally Open package in osu!. Check it imports as a separate local mapset, retains the original visible song title/background/audio, and contains only the selected practice difficulty with reduced spacing. Check the original map still works.
-5. Try cancellation and choosing an existing filename. No finished package should be overwritten; failed/canceled work before publication should leave no staging file.
+1. Close the prior app, then launch publish-tg5/OsuAimAnalyzer.exe. Keep the tools subfolder alongside it.
+2. In Recent Play → Practice, Build preview and Export practice maps…. Leave the supported variants checked; save a new .osz outside Songs.
+3. Open package to import in osu!stable. Check the generated difficulties form a separate practice mapset with the original title/background and that the original map still plays unchanged.
+4. Play mild/strong slowdown and combined spacing without adding DT/HT. Check audio synchronization at the start, middle and end. Preserve pitch should retain the song's pitch.
+5. Choose Change pitch with rate, rebuild and export another package. Slowdown should now lower pitch. Try cancellation and an existing filename; neither should leave a partial finished package or overwrite a previous export.
 
-## Limits and next batch
+## Limits and next action
 
-TG5 is required for playable slowdown exports. Current source-relative stat/mod rules remain unchanged. Slider spacing still uses exit proxies, not exact curve evaluation. Basic storyboards are preserved only at unchanged rate; variables and unsupported resource/event types fail explicitly. Linked/reparse paths are rejected, including linked output folders; choose a normal local directory.
+Rate export supports MP3/Ogg/WAV and produces larger PCM WAV assets. External .osb files and unsupported embedded video/storyboard content block rate export explicitly; select spacing/stat only for those maps. Missing audio tools likewise leave spacing/stat export available. No automatic source rewriting or media omission occurs.
 
-Documents are capped at 16 MiB, assets at 256 MiB each and 1 GiB total, and resource entries at 20,000. Assets are copied, not decoded. Rechecks detect normal editing races but do not constitute a hostile concurrent-filesystem security boundary. Cancellation after the atomic publication point retains the completed user-selected artifact. Import behavior remains NEEDS USER TEST, not ACCEPTED.
+Documents are capped at 16 MiB, assets at 256 MiB, resources at 1 GiB total and 20,000 entries; audio has a 30-minute duration ceiling and ten-minute process timeout. Existing reparse-path restrictions remain. Rechecks address normal editing races, not hostile concurrent filesystem changes. Cancellation after atomic publication retains the completed artifact.
 
-## TG4 feedback follow-up
-
-IMPLEMENTED; NEEDS USER TEST: Practice now shows export eligibility and the Reduced spacing omission reason beside the buttons. Unavailable Export/Open actions explain why instead of ignoring clicks. The reported screenshot had only slowdown variants; out-of-bounds spacing was correctly rejected. No unsafe transform bypass or audio generation was added. Native suite now contains 102 passing tests, including actual action-click coverage. Test build: publish-tg4-fix/OsuAimAnalyzer.exe.
-
-## Current follow-up: spacing compatibility
-
-IMPLEMENTED; NEEDS USER TEST: rigid group fitting now restores Reduced spacing on the reported source hash c252e57acfbd38812c12023f44882b22. Read-only real-map check: four variants; spacing 0.9115x, one repositioned group, three original off-screen anchors, zero relaxed groups; original bytes unchanged. No personal map files are tracked. 105 tests pass. Launch publish-spacing-fix/OsuAimAnalyzer.exe, rebuild that map's preview and test spacing export/import. TG5 remains NOT STARTED; no item is ACCEPTED.
+Next action is TG5 user testing. TG6/AIM-017 broader generation needs scope decisions and has not begun. No status is ACCEPTED.

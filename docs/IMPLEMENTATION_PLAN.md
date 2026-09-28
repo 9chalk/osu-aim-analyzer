@@ -190,8 +190,21 @@ Exit coverage: selected multi-difficulty .osz output, nested/background bytes an
 
 The intermediate UI explicitly exports only the chosen rate-1 subset. The current planner normally offers Reduced spacing alone; the service supports several spacing/stat variants without duplicating pipelines. Rate recipes remain preview-only and cannot be passed through the exporter. Unsupported resources fail the whole selected set rather than produce incomplete packages. Supported resource types and size/containment limits are in PRODUCT_SPEC.md.
 
-Next: **TG5 — Audio rendering and complete selected-map series**, NOT STARTED. Extend this one staged exporter with explicitly managed audio rendering, content/options deduplication and timestamp checks. Preserve the selected-subset/complete-series distinction until every requested rate recipe can be published. Pitch is already explicit; serialized stat/mod semantics remain the documented source-relative policy.
+At TG4 completion, the next batch was **TG5 — Audio rendering and complete selected-map series** (now implemented below). Extend this one staged exporter with explicitly managed audio rendering, content/options deduplication and timestamp checks. Preserve the selected-subset/complete-series distinction until every requested rate recipe can be published. Pitch is already explicit; serialized stat/mod semantics remain the documented source-relative policy.
 
 ## Spacing fitting follow-up
 
 The reported map exposed two TG2 limitations: cumulative translation drift and rejection of existing off-screen slider anchors. The native fitter now groups at 16 objects/source-time pauses/spinners, computes the feasible rigid translation range, and searches toward original spacing if necessary. Slider geometry is never clamped. Heads stay on-screen; existing anchor excursions cannot extend beyond their original envelope. Preview/export provenance report fitting counts. The actual reported source hash was checked read-only and now has an export-eligible Reduced spacing recipe (0.9115x achieved head spacing). 105 regression tests pass. Actual osu! import/playback remains NEEDS USER TEST; no item is ACCEPTED. TG5 remains separate.
+
+
+## TG5 delivery record — IMPLEMENTED / NEEDS USER TEST
+
+One native PracticeAudioRenderer process boundary extends the existing PracticePackageExporter. The pinned Gyan FFmpeg 9.0.2 essentials distribution is installed explicitly through setup_audio.ps1 with archive SHA-256 verification, kept Git-ignored, and copied with its license/provenance into the release folder. No PATH fallback, startup download, Toolkit shell or new Songs index is introduced. See AUDIO_RUNTIME.md for source links, limits and deployment.
+
+Delivered: preserve-pitch and rate-linked pitch; bounded process diagnostics/timeouts; cancellation that terminates and drains the process; source-audio snapshots; content/options audio sharing; generated AudioFilename replacement; schema-2 package provenance; complete selected-variant export and explicit missing-tool exclusions. Existing metadata/resource/path validation, atomic publication, UI session ownership, planner, mod/stat math and diagnosis remain the shared implementations. External storyboards still block rate exports because they cannot safely share unretimed timestamps across difficulties.
+
+Automated gate: restore, Debug build, 120 Release tests and self-contained Windows x64 publish pass. The 15 additional tests cover frequency/duration/burst alignment, compressed sources, running-process cancellation, selected full-series UI export, deduplication/pitch separation, changed source audio and all-or-nothing cleanup. Existing snapshot/scoring/storage tests pass unchanged.
+
+Manual gate: launch publish-tg5/OsuAimAnalyzer.exe; rebuild the selected play's preview; export all supported variants; import the saved .osz explicitly; compare mild/strong slowdown, combined spacing and both pitch policies in osu!stable without added DT/HT. Check start/middle/end timing, title/background, separate generated identities and original map behavior. Test cancellation and save collisions. No item is ACCEPTED.
+
+**Next action:** user test TG5. TG6 (broader diagnostics generation, AIM-017) remains deferred pending scope decisions; do not begin it automatically.

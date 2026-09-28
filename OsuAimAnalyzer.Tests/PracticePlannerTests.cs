@@ -164,7 +164,7 @@ public class PracticePlannerTests
         string text = PracticePreviewControl.FormatPreview(result);
         Assert.Contains("targets: NM source", text);
         Assert.Contains("achieved head spacing", text);
-        Assert.Contains("rendering required", text);
+        Assert.Contains("rendered on export", text);
         Assert.Contains("not proof of improvement", text);
         Assert.Contains("OD 6 → 6", text);
     }

@@ -40,6 +40,7 @@ public sealed class PracticeExportTests : IDisposable
     {
         Assert.False(File.Exists(Destination));
         Assert.Empty(Directory.EnumerateFiles(root, ".aim-practice-*.tmp"));
+        Assert.Empty(Directory.EnumerateDirectories(root, ".aim-audio-*"));
     }
 
     [Fact]
@@ -74,7 +75,7 @@ public sealed class PracticeExportTests : IDisposable
         using (var input = zip.GetEntry("aim-analyzer-provenance.json")!.Open())
         {
             using var manifest = await JsonDocument.ParseAsync(input);
-            Assert.Equal(1, manifest.RootElement.GetProperty("SchemaVersion").GetInt32());
+            Assert.Equal(2, manifest.RootElement.GetProperty("SchemaVersion").GetInt32());
             Assert.Equal(2, manifest.RootElement.GetProperty("Variants").GetArrayLength());
             Assert.Equal(source.BeatmapHash, manifest.RootElement.GetProperty("Source").GetProperty("BeatmapHash").GetString());
         }
@@ -83,11 +84,11 @@ public sealed class PracticeExportTests : IDisposable
     }
 
     [Fact]
-    public async Task Export_RejectsRateRecipesInsteadOfSilentlyOmittingThem()
+    public async Task Export_MissingAudioToolsFailsWholeSelectedSet()
     {
         var options = BeatmapDocumentTests.Options(.9);
         var slowdown = new PracticeVariant("Slowdown", options, BeatmapTransforms.Apply(document, options), "test");
-        await Assert.ThrowsAsync<NotSupportedException>(() => PracticePackageExporter.ExportAsync(source, new[] { spacing, slowdown }, Destination));
+        await Assert.ThrowsAsync<FileNotFoundException>(() => PracticePackageExporter.ExportAsync(source, new[] { spacing, slowdown }, Destination, audioRenderer: new PracticeAudioRenderer(Path.Combine(root, "missing-tools"))));
         AssertNoPackageOrStaging();
     }
 

@@ -5,6 +5,7 @@
 
 # Downloaded by setup_native.ps1; retain any native source files
 /OsuAimAnalyzer/native/*.dll
+/OsuAimAnalyzer/tools/ffmpeg/
 
 # Local IDE state
 .vs/
