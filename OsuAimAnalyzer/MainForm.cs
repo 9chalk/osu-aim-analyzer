@@ -36,6 +36,8 @@ public sealed class MainForm : Form
     private readonly Panel playInspectorPageHost = new() { Dock = DockStyle.Fill, BackColor = Theme.Background };
     private readonly Panel playInspectorTopErrorsHost = new() { Dock = DockStyle.Fill, BackColor = Theme.Background };
     private readonly Panel playInspectorAdvancedHost = new() { Dock = DockStyle.Fill, BackColor = Theme.Background };
+    private readonly PracticePreviewControl playInspectorPractice = new();
+    private readonly PracticePreviewSession practicePreviewSession = new();
     private readonly Dictionary<string, Control> playInspectorPages = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, Button> playInspectorNavButtons = new(StringComparer.OrdinalIgnoreCase);
     private string playInspectorPage = "Overview";
@@ -207,6 +209,13 @@ public sealed class MainForm : Form
         LoadSettingsIntoUi();
         ConfigureGrid();
         WireEvents();
+        playInspectorPractice.PreviewRequested += async policy => await BuildPracticePreviewAsync(policy);
+        playInspectorPractice.CancelRequested += () =>
+        {
+            practicePreviewSession.Cancel();
+            playInspectorPractice.ShowMessage("Preview canceled. Build preview to try again.");
+        };
+        Disposed += (_, _) => practicePreviewSession.Dispose();
         Shown += async (_, _) => await InitializeAsync();
         FormClosed += (_, _) =>
         {
@@ -331,6 +340,7 @@ public sealed class MainForm : Form
         playInspectorPages["Diagnosis"] = ToolkitUi.Wrap(playInspectorDiagnosis, "Objective diagnosis · this run vs your similar-map history");
         playInspectorPages["Top errors"] = BuildInspectorTopErrorsPage();
         playInspectorPages["Advanced"] = playInspectorAdvancedHost;
+        playInspectorPages["Practice"] = playInspectorPractice;
 
         foreach (var page in playInspectorPages.Values)
         {
@@ -395,6 +405,7 @@ public sealed class MainForm : Form
         AddNav("Compare", "Compare");
         AddNav("Errors", "Errors");
         AddNav("Diagnosis", "Diagnosis");
+        AddNav("Practice", "Practice");
 
         var divider = new Label
         {
@@ -2546,6 +2557,8 @@ public sealed class MainForm : Form
     private void ShowPlayInspector(PlayRow? play, bool force = false)
     {
         if (play != null && !force && inspectorRenderedPlayId == play.Id) return;
+        practicePreviewSession.Cancel();
+        playInspectorPractice.Reset(play?.Map);
         if (play == null)
         {
             ClearEmbeddedInspectorTools();
@@ -2610,6 +2623,42 @@ public sealed class MainForm : Form
         }
         playInspectorErrors.Enabled = playInspectorAdvanced.Enabled = true;
         LoadInspectorBackground(play);
+    }
+
+    private async Task BuildPracticePreviewAsync(PracticePitchPolicy pitch)
+    {
+        if (!inspectorPlayId.HasValue) return;
+        var request = practicePreviewSession.Begin(inspectorPlayId.Value);
+        playInspectorPractice.SetBusy(true);
+        try
+        {
+            string text = await Task.Run(async () =>
+            {
+                var play = database.LoadPlay(request.PlayId) ?? throw new InvalidOperationException("The selected play is no longer available.");
+                request.Token.ThrowIfCancellationRequested();
+                // Reuse the existing resolver; never scan another Songs tree or use foreground selection.
+                string sourcePath = File.Exists(play.BeatmapPath) ? play.BeatmapPath
+                    : resolver.Resolve(play.BeatmapHash, refreshDbOnMiss: false)?.Path ?? "";
+                if (string.IsNullOrWhiteSpace(sourcePath)) throw new FileNotFoundException("The matching source .osu file could not be resolved. Check Songs settings and restore the original map version.");
+                var source = new PracticeSourceIdentity(sourcePath, play.BeatmapHash, play.Id, play.Mods);
+                var document = await PracticePreviewSource.ReadVerifiedAsync(source, request.Token);
+                var diagnosis = AimTrainingDiagnosisEngine.BuildRunDiagnosisData(play, database.LoadTransitions(play.Id), database, database.LoadPlays());
+                request.Token.ThrowIfCancellationRequested();
+                var result = PracticeSeriesPlanner.Plan(source, document, diagnosis.PlayId, diagnosis.Evidence, pitch, request.Token);
+                // Source may have changed while diagnosis/transforms ran. Revalidate before presenting it.
+                await PracticePreviewSource.ReadVerifiedAsync(source, request.Token);
+                request.Token.ThrowIfCancellationRequested();
+                return PracticePreviewControl.FormatPreview(result);
+            }, request.Token);
+            if (!IsDisposed && practicePreviewSession.IsCurrent(request, inspectorPlayId))
+                playInspectorPractice.ShowMessage(text);
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            if (!IsDisposed && practicePreviewSession.IsCurrent(request, inspectorPlayId))
+                playInspectorPractice.ShowMessage("Could not build practice preview.\r\n" + ex.Message + "\r\n\r\nNo source files were changed. You can retry after correcting the problem.");
+        }
     }
 
     private void RefreshInspectorHistory(PlayRow play, IReadOnlyList<PlayRow> all)

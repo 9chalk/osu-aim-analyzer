@@ -148,7 +148,7 @@ TG1 → TG2 → TG3 → TG4 → TG5; TG6 is deferred. T1 from the audit (discove
 
 ## Repository isolation and release gate
 
-The branch is feature/toolkit-integration, based on master at adc29a1. Ignore reference/ and the local Toolkit archive, and retain AGENTS.md's read-only boundary. Audit completion is static review, not runtime certification. No source from reference/ belongs in the planning commit. Before each future feature commit, review staged paths and confirm no reference/source archive was included. Run native build/tests appropriate to the change and report results. TG1 is IMPLEMENTED and NEEDS USER TEST. TG2 infrastructure is IMPLEMENTED with the support limits below; TG3 has not started.
+The branch is feature/toolkit-integration, based on master at adc29a1. Ignore reference/ and the local Toolkit archive, and retain AGENTS.md's read-only boundary. Audit completion is static review, not runtime certification. No source from reference/ belongs in the planning commit. Before each future feature commit, review staged paths and confirm no reference/source archive was included. Run native build/tests appropriate to the change and report results. TG1 is IMPLEMENTED and NEEDS USER TEST. TG2 infrastructure is IMPLEMENTED with the support limits below; TG3 preview is IMPLEMENTED; see its completion record below.
 
 ## TG1 completion record — 2026-09-28 UTC
 
@@ -170,4 +170,14 @@ Support boundary: standard maps, explicit difficulty edits, positive finite rate
 
 Recent Play layout fix is separate from transform work: readout tabs hide the Overview hero and fill available height; explicit layout sizing and immediate page layout cover switching/resizing. Manual visual checks remain NEEDS USER TEST. No item is ACCEPTED.
 
-Next batch: **TG3 — Evidence-backed series planner and Recent Play preview**, not started. Use these services with explicit unsupported-candidate handling; resolve recipe/count/evidence policy before exposing planner results. TG4/TG5 remain prerequisites for actual playable exports.
+At TG2 completion, the next batch was **TG3 — Evidence-backed series planner and Recent Play preview** (implemented below). Use these services with explicit unsupported-candidate handling; resolve recipe/count/evidence policy before exposing planner results. TG4/TG5 remain prerequisites for actual playable exports.
+
+## TG3 completion record — 2026-09-28
+
+**IMPLEMENTED; NEEDS USER TEST.** PracticeSeriesPlanner.cs implements the user-approved up-to-five recipe preview policy, using RecommendationEvidence and BeatmapTransforms. PracticePreviewControl.cs adds the native Recent Play Practice page. PracticePreviewSession.cs owns stale-request cancellation and bounded, hash-verified source reads. MainForm coordinates existing selection, resolver and diagnosis; no second history store, source index or Toolkit runtime is added. BeatmapTransforms accepts cooperative cancellation inside its loops.
+
+Policy details and limitations are recorded in PRODUCT_SPEC.md. Sparse evidence gets labeled conservative proposals; reliable conflicting/lower-demand evidence blocks affected reductions. No OD-specific factor exists, so the fifth recipe eases AR only when supported. Modded-play evidence is not translated into NM targets. Variants are deduplicated by transformed content, have bounded changes and explain omissions. Counts below five are expected, not silent partial completion. No scoring/DB changes or lifetime-streak evidence are used.
+
+Verification: all 87 native tests pass, including deterministic/bounded policy, weak/invalid/conflicting evidence, DT/NC/HT/HR/EZ boundaries, unsupported-video fallback, duplicate prevention, changed/missing source, request cancellation and stale completions. STA tests exercise MainForm's real worker with synthetic SQLite/source data, retry after file change, selection reset, responsive UI dispatch and layout at three sizes. Existing diagnosis snapshots remain unchanged.
+
+Manual gate: launch the TG3 build, select a play, open Practice, build/rebuild a preview, try cancel and another play, compare sparse/modded cases, and resize/read explanations. No item is ACCEPTED. TG4 is NOT STARTED; its next deliverable is staged spacing/stat export with resource/provenance validation. TG5 remains required for playable slowdown exports.

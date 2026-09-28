@@ -20,8 +20,9 @@ public static class BeatmapTransforms
         return Math.Round(value, MidpointRounding.AwayFromZero).ToString("0", Invariant);
     }
 
-    public static BeatmapTransformResult Apply(BeatmapDocument source, PracticeTransformOptions options)
+    public static BeatmapTransformResult Apply(BeatmapDocument source, PracticeTransformOptions options, CancellationToken token = default)
     {
+        token.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(options);
         bool rateChanged = options.SourceClockRate != 1;
@@ -47,6 +48,7 @@ public static class BeatmapTransforms
         double lastObjectTime = double.NegativeInfinity;
         for (int index = 0; index < source.Lines.Count; index++)
         {
+            token.ThrowIfCancellationRequested();
             var line = source.Lines[index];
             if (!BeatmapDocument.IsContent(line)) continue;
             string text = line.Text.Trim();
@@ -115,7 +117,7 @@ public static class BeatmapTransforms
         }
         if (objects.Count == 0 || !redLine) throw new NotSupportedException("A standard map needs hit objects and an uninherited timing point.");
         if (statsChanged && seenStats.Count != 4) throw new NotSupportedException("Explicit HP/CS/AR/OD keys are required for stat edits.");
-        double ratio = spacingChanged ? ReduceSpacing(objects, options.SpacingMultiplier, replacements) : 1;
+        double ratio = spacingChanged ? ReduceSpacing(objects, options.SpacingMultiplier, replacements, token) : 1;
         return new(source.Replace(replacements), rateChanged, ratio,
             "Consecutive head-distance ratio; slider exits use the last control point/repeat parity as a proxy, not evaluated curves.");
     }
@@ -185,12 +187,13 @@ public static class BeatmapTransforms
         public double Length => Math.Sqrt(X * X + Y * Y);
     }
 
-    private static double ReduceSpacing(List<Geometry> objects, double multiplier, Dictionary<int, string> replacements)
+    private static double ReduceSpacing(List<Geometry> objects, double multiplier, Dictionary<int, string> replacements, CancellationToken token)
     {
         PointD? previousExit = null, editedExit = null, previousHead = null, editedHead = null;
         double before = 0, after = 0;
         foreach (var obj in objects)
         {
+            token.ThrowIfCancellationRequested();
             if (obj.Spinner) { previousExit = editedExit = previousHead = editedHead = null; continue; }
             PointD head = obj.Points[0];
             PointD desired = previousExit.HasValue ? editedExit!.Value + (head - previousExit.Value) * multiplier : head;
