@@ -5,6 +5,13 @@ namespace OsuAimAnalyzer;
 public static class BeatmapParser
 {
     public static BeatmapData Parse(string path, OsuDbBeatmap? cached = null)
+        => ParseLines(File.ReadLines(path), path, cached, true);
+
+    // Preview documents never inherit the source map's hash, ranked status or cached stars.
+    public static BeatmapData ParseDocument(BeatmapDocument document)
+        => ParseLines(document.Lines.Select(l => l.Text), "", null, false);
+
+    private static BeatmapData ParseLines(IEnumerable<string> lines, string path, OsuDbBeatmap? cached, bool resolveBackground)
     {
         var map = new BeatmapData
         {
@@ -28,7 +35,7 @@ public static class BeatmapParser
 
         string section = "";
         int objectIndex = 0;
-        foreach (var raw in File.ReadLines(path))
+        foreach (var raw in lines)
         {
             string line = raw.Trim();
             if (line.Length == 0 || line.StartsWith("//")) continue;
@@ -69,7 +76,7 @@ public static class BeatmapParser
                         if (!string.IsNullOrWhiteSpace(file))
                         {
                             string candidate = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(path) ?? "", file);
-                            if (File.Exists(candidate)) map.BackgroundPath = candidate;
+                            if (resolveBackground && File.Exists(candidate)) map.BackgroundPath = candidate;
                         }
                     }
                 }

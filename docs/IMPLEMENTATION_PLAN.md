@@ -148,7 +148,7 @@ TG1 → TG2 → TG3 → TG4 → TG5; TG6 is deferred. T1 from the audit (discove
 
 ## Repository isolation and release gate
 
-The branch is feature/toolkit-integration, based on master at adc29a1. Ignore reference/ and the local Toolkit archive, and retain AGENTS.md's read-only boundary. Audit completion is static review, not runtime certification. No source from reference/ belongs in the planning commit. Before each future feature commit, review staged paths and confirm no reference/source archive was included. Run native build/tests appropriate to the change and report results. TG1 is IMPLEMENTED and NEEDS USER TEST. TG2 is NOT STARTED and requires a separate implementation request.
+The branch is feature/toolkit-integration, based on master at adc29a1. Ignore reference/ and the local Toolkit archive, and retain AGENTS.md's read-only boundary. Audit completion is static review, not runtime certification. No source from reference/ belongs in the planning commit. Before each future feature commit, review staged paths and confirm no reference/source archive was included. Run native build/tests appropriate to the change and report results. TG1 is IMPLEMENTED and NEEDS USER TEST. TG2 infrastructure is IMPLEMENTED with the support limits below; TG3 has not started.
 
 ## TG1 completion record — 2026-09-28 UTC
 
@@ -157,6 +157,17 @@ The branch is feature/toolkit-integration, based on master at adc29a1. Ignore re
 - IMPLEMENTED: separate Windows-targeted xUnit project; 43 cases covering snapshots, numerical semantics, validation, immutability, synthetic history, in-memory SQLite and empty/clean/evidence-bearing diagnosis. Four text snapshots were captured from the pre-refactor implementation and retained as regression fixtures.
 - VERIFIED: baseline and updated application builds succeed; Release tests pass 43/43; Windows x64 self-contained single-file publish succeeds. Existing WFAC010 high-DPI warning remains, intentionally outside TG1.
 - NEEDS USER TEST: real-history Recent Play and detailed Diagnosis regression smoke checks; no interactive UI verification claimed. No item is ACCEPTED.
-- TG2 NOT STARTED: no preserving parser, geometry/rate transformation, generation, audio dependency, new UI, scoring change or schema migration. B2 streak correction is still separate.
+- At TG1 completion, TG2 was NOT STARTED: no preserving parser, geometry/rate transformation, generation, audio dependency, new UI, scoring change or schema migration. B2 streak correction is still separate.
 
 Contracts validate finite/nonnegative difficulty values and positive finite rate/spacing; supported export ranges are future validation, not silently clamped here. PublishedPracticePackage carries only an absolute package path and archive entry names; a future exporter must ensure actual publication and durable storage. Source MD5/path validation does not detect later file edits; future generation must revalidate content. Controlled evidence retains the current engine's high-percentile fallback when controlled samples are sparse. Sequence-response messages remain associations; TG1 adds no causal learning.
+## TG2 completion record — 2026-09-28
+
+**IMPLEMENTED:** BeatmapDocument.cs, BeatmapResources.cs, BeatmapTransforms.cs and the existing parser's in-memory adapter. Pure rate/stat/spacing preview operations reuse TG1 options and the analysis parser; no second parser for analysis metadata, Songs index, star cache or database is introduced. Toolkit concepts were adapted into C# without copying its runtime or exporter.
+
+Verification: 71 native tests pass (27 new document/transform/resource cases plus one STA layout case, retaining 43 TG1 tests). Cases cover byte preservation, UTF encoding, source-file immutability, red/green timing, curve types/control points/repeats, combined transforms, culture/rounding, malformed/unsupported content, resource traversal, stale options and cached-star isolation.
+
+Support boundary: standard maps, explicit difficulty edits, positive finite rate and spacing reductions. Slider exits are documented control-point proxies. Out-of-bounds layouts are rejected; grouping/auto-fit is not implemented. No video/storyboard retiming. Resource manifests are references with issues, not export-ready packages; implicit sample assets, external storyboards and physical filesystem validation must be resolved at TG4. Rate audio is deferred to TG5. These limits must be surfaced by TG3, not silently bypassed.
+
+Recent Play layout fix is separate from transform work: readout tabs hide the Overview hero and fill available height; explicit layout sizing and immediate page layout cover switching/resizing. Manual visual checks remain NEEDS USER TEST. No item is ACCEPTED.
+
+Next batch: **TG3 — Evidence-backed series planner and Recent Play preview**, not started. Use these services with explicit unsupported-candidate handling; resolve recipe/count/evidence policy before exposing planner results. TG4/TG5 remain prerequisites for actual playable exports.

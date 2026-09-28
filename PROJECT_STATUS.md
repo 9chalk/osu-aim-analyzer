@@ -2,29 +2,36 @@
 
 ## Current batch
 
-TG1 — Shared contracts and native test foundation: **IMPLEMENTED; NEEDS USER TEST**.
-Branch: feature/toolkit-integration. Master baseline remains adc29a1. No item is ACCEPTED. TG2 is NOT STARTED.
+TG2 — Preserving documents, resources and pure transformations: **IMPLEMENTED with documented support limits; NEEDS USER TEST**. TG3 is NOT STARTED. No item is ACCEPTED.
+Branch: feature/toolkit-integration. Master baseline remains adc29a1.
 
 ## Delivered
 
-Immutable source identity, explicit source/generated difficulty and rate/spacing/pitch options, a durable-package result contract, and detached structured diagnosis evidence. Existing run diagnosis formatting and formulas are preserved. One native xUnit project adds 43 test cases with synthetic fixtures and in-memory SQLite; no personal replay assets are used.
+TG1 immutable contracts and structured diagnosis remain intact. TG2 adds immutable preserving beatmap text/encoding, a referenced-resource inventory, an adapter to the existing analysis parser, and pure rate/stat/spacing preview transformations. No export, audio runtime, schema change or new practice tab was added.
+
+Recent Play Summary, Training, Compare, Errors, Diagnosis and other readout pages use the full inner height; the play hero remains on Overview. Explicit fill sizing and immediate relayout support page switches/resizing.
 
 ## Verification
 
-- Baseline and TG1 Debug application builds: succeeded.
-- Release test suite: 43 passed, zero failed/skipped.
-- Release win-x64 self-contained single-file publish: succeeded.
-- Existing WFAC010 high-DPI warning: unchanged; no DPI behavior changed.
-- Real-history UI smoke checks: NEEDS USER TEST; not performed by automation.
-- Reference folder: read-only; content hashes checked against the audit inventory. No reference files are tracked.
+- Restore and Debug application build: succeeded.
+- Release native suite: 71 passed, zero failed/skipped (43 existing, 28 new).
+- Windows x64 self-contained single-file publish: succeeded in OsuAimAnalyzer/bin/Release/net8.0-windows/win-x64/publish-tg2/.
+- Separate publish directory preserves the user's running prior build.
+- Existing WFAC010 DPI warning remains.
+- STA tests verify page/text bounds at three sizes; real-history/DPI visual checks remain NEEDS USER TEST.
+- Reference folder is read-only and excluded from commits; master baseline preserved.
 
 ## Manual checks
 
-1. Run the application and select an existing analyzed replay in Dashboard Recent Play.
-2. Open Diagnosis; check the text, contributors and training-response section against familiar results. Repeat with sparse history and a different selected replay.
-3. Open the detailed diagnostics window's Diagnosis tab; confirm consistent content and normal navigation/resizing.
-4. Confirm existing displayed proficiency/Aim Performance and selected-map Quick Checker still behave normally. No practice generator or new tab should appear.
+1. Close the prior application, then launch publish-tg2/OsuAimAnalyzer.exe.
+2. Select an analyzed replay in Dashboard Recent Play. Switch Summary, Training, Compare, Errors and Diagnosis; confirm text uses the inner height and remains readable when resized.
+3. Return to Overview and confirm its play header returns. Check Top errors and Advanced with a real play.
+4. Confirm familiar diagnosis, scoring and Quick Checker results remain unchanged.
 
-## Remaining risks and decisions
+TG2 is internal infrastructure, so no practice-generation navigation entry exists yet. TG3 adds the planner/preview UI.
 
-Synthetic tests cannot certify all real replay/history combinations or WinForms layouts. Existing diagnosis fallback and confidence semantics, the lifetime streak issue AIM-008, and DPI warning remain unchanged. Contracts perform no map I/O; future exporters must enforce supported format ranges, check source freshness and ensure published-file lifetime. Five-variant policy, pitch/stat compensation, low-evidence thresholds and played-mod baking remain decisions for later batches. No audio renderer, map writer, schema change or Toolkit runtime dependency was added.
+## Remaining risks
+
+Slider spacing uses control-point/repeat-parity exit proxies, not evaluated curves; achieved spacing is a head-distance metric. Only reductions are supported, and out-of-bounds layouts fail rather than clamp. Toolkit grouping/auto-fit is not implemented. Changed maps reject unsupported timed content, including videos/storyboards. Explicit difficulty edits require HP/CS/AR/OD keys and values in 0–10.
+
+Resource inventory cannot certify a complete export: TG4 must resolve implicit samples, external .osb files, actual asset existence/containment and generated identities. TG5 must render rate-adjusted audio. Product choices for recipes, evidence thresholds, pitch/stat compensation and mod baking remain open. AIM-008 streak correction is separate.

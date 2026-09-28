@@ -36,3 +36,11 @@ PracticeContracts.cs adds immutable source/option/package-result values within t
 AimTrainingDiagnosisEngine.BuildRunDiagnosisData shares its core with the existing text API and supports either database-backed or already-loaded comparison transitions. RunDiagnosisResult exposes copied immutable numeric evidence, detached sequence-response strings and DisplayText. Existing UI callers retain BuildRunDiagnosis, so no new UI wiring is required. Category factor numbers are exposed from calculations already performed; thresholds and formulas are unchanged. Confidence/controlled ranges retain existing association/fallback semantics.
 
 OsuAimAnalyzer.Tests references the application assembly directly, targets Windows/.NET 8 and uses xUnit. Tests use synthetic data, four pre-refactor text snapshots and in-memory SQLite. The previously described prose-only limitation is resolved for run-level factors; the preserving parser, planner, exporter and audio services remain proposals. TG1 is IMPLEMENTED / NEEDS USER TEST, not ACCEPTED.
+
+## TG2 implemented boundaries
+
+BeatmapDocument owns immutable preserving text/encoding; BeatmapResources inventories references without I/O. BeatmapTransforms returns a new document, audio-rendering requirement and labeled achieved head-spacing measure. It consumes TG1 options and performs no file writes. Unsupported changed content fails explicitly; unchanged documents round-trip without validation/reformatting.
+
+BeatmapParser now shares its existing analysis parsing through ParseLines. The disk API retains existing cache/background behavior. ParseDocument provides an in-memory preview with empty hash/path/star cache and no background filesystem lookup; referenced backgrounds belong to the resource manifest. Source IDs remain document metadata until TG4 assigns generated identities; previews must not be persisted as source plays.
+
+Spacing preserves slider shape by translation and uses control-point/repeat-parity exit proxies. It is not a rendered-curve evaluator or Toolkit's complete grouping/fitting algorithm. Export must additionally resolve implicit assets and external .osb files, validate physical containment and render rate-adjusted audio. There is still no exporter, audio service or practice UI. Recent Play readouts now use the full inner height; Overview retains its hero.
