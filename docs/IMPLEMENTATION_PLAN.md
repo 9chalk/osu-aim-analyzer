@@ -1,0 +1,94 @@
+# Implementation Plan
+
+## Scope and ordering
+
+This is a proposed future plan for [PRODUCT_SPEC.md](PRODUCT_SPEC.md), based on the complete owner-confirmed Google Doc and repository commit `231daed`. No implementation is authorized by creating this plan. Most source requests are already present, so batches prioritize verification and a concrete aggregation risk rather than recreating screens. Stable AIM IDs are defined in the specification.
+
+Dependency order: **B1 → B2 → B3 → B4**. B4 is conditional on a requirements decision, not an automatic follow-on. Each batch must leave a buildable Windows application. No broad architecture rewrite or scoring recalibration is required.
+
+## B1 — Characterize existing diagnostics and establish a regression baseline
+
+**Recommended first implementation batch.** Covers AIM-001–AIM-007; prepares AIM-008.
+
+- Add a separate test project referencing the existing application assembly; choose and document one test framework (none is currently configured).
+- Use synthetic `TransitionMetric` fixtures for clean control, shake-off, late acquisition, directional errors, cause ties, empty input, repeated causes, and clean/cause changes breaking a sequence.
+- Characterize existing single-play thresholds and count denominators. Record the distinction between two-sample profile streaks and three-sample prose summaries without changing either yet.
+- Demonstrate AIM-008 with overlapping times and object indices from different `PlayId` values. Keep the known defect explicitly documented; do not encode its incorrect output as the desired product contract. Land the permanent failing-then-passing regression with B2.
+- Capture source-level scoring invariants and a manual smoke checklist for Recent Play, detailed diagnostics, and history filtering. Use synthetic or permissioned small assets, never a private replay-history dump.
+
+**Dependencies/refactoring:** Existing model and diagnostic functions are public; start with a test project reference. Extract a small pure boundary only if compilation/testability proves it necessary. Do not move the whole app into a new architecture.
+
+**Risk:** Low/medium; the Windows target requires a Windows test environment. Synthetic coverage characterizes rules but does not establish real-world classification accuracy.
+
+**Exit:** Application and tests build; new characterization tests pass; mixed-play defect has a documented reproducer; no production code behavior changes or scoring changes. Record actual results rather than assuming the baseline already compiles.
+
+## B2 — Correct play-scoped repeated-pattern aggregation
+
+Covers AIM-008 and the remaining correctness work in AIM-004/AIM-007. Requires B1.
+
+- Separate within-play streak discovery from cross-play counts and summary selection.
+- Group by `PlayId`, order transitions consistently within each play, and ensure adjacency cannot cross a play boundary. Preserve existing gap thresholds initially; do not conflate a correctness fix with a new definition of “in a row.”
+- Add owning play identity to the derived streak result and update consumers so a historical object range is not presented without play context.
+- Preserve per-transition diagnoses, production proficiency, aim performance, persisted telemetry, and directional statistics.
+
+**Refactoring:** Limit changes to diagnostic aggregation/result types and direct consumers in `AimCauseProfileControl`, `MainForm`, `PlayInsightBuilder`, and `AdvancedDiagnosticsForm`. No database migration is expected for derived results.
+
+**Risk:** Medium: output contracts and historical summaries change. Use deterministic tie handling and test empty/missing data.
+
+**Exit:** Regression cases prove no cross-play merging and no interleaving-induced loss of valid streaks; single-play outputs and all-history cause counts remain unchanged. A testable Windows build displays play context correctly. This is the first proposed user-visible bug-fix batch; it is not implemented now.
+
+## B3 — Verify existing presentation end to end and fix demonstrated gaps
+
+Covers AIM-002, AIM-005, AIM-006, AIM-007, and presentation of AIM-001/AIM-004. Requires B2 for trustworthy historical streak results.
+
+- Exercise selection changes, no-data cases, history filters, narrow layouts, and detail-window opening with controlled fixtures or permissioned local replay/map pairs.
+- Compare the same transition across Recent Play, detailed table/tooltips, and reconstructed top-error text. Compare historical counts against known fixture counts.
+- Verify direction and cause remain separate and percentage denominators are understandable.
+- Fix only reproduced stale-state, inconsistency, or readability failures. Shared diagnostic presentation helpers are appropriate if duplication causes a real mismatch; adding new pages is not a goal.
+
+**Risk:** Medium: much UI coordination lives in `MainForm`, and path reconstruction depends on matching input files.
+
+**Exit:** A build passes the B1/B2 suite and the documented smoke matrix; UI fixes have before/after evidence. If existing UI already passes, close the items as verified without cosmetic changes. Preserve scoring outputs.
+
+## B4 — Decide whether stronger shake-off evidence is needed (conditional)
+
+Covers the unresolved literal interpretation of AIM-003 and possible AIM-001/AIM-004 explanation refinement. Requires B1–B3 and an explicit scope decision.
+
+**Decision:** Is the current clearly labeled inference sufficient, or should the product prove target entry followed by exit from cursor frames? Do not treat the second option as already requested in implementable detail.
+
+If inference is sufficient, validate representative examples and close the feature without new telemetry. If exact evidence is selected:
+
+1. Define target radius, acquisition/exit timing window, hit-time reference, allowed sample gaps, and handling of missing replay/map data.
+2. Add derived acquisition/exit evidence behind the diagnostic boundary, keeping the production score independent.
+3. Decide whether evidence is reconstructed on demand or persisted. Persistence requires a versioned schema/backfill policy; missing evidence in old plays must remain “unavailable,” not “clean.”
+4. Test paired trajectories (acquire-and-leave, never acquire, stay centered), timing/mod transformations, sparse samples, and historical fallback before surfacing verified-event language.
+
+**Risk:** High: precision of replay reconstruction, false certainty, and historical compatibility. Split telemetry and UI work into separate buildable changes once the decision is made.
+
+**Exit:** Either documented acceptance of existing inference, or an explicitly scoped, tested evidence feature with honest fallback behavior. No unrelated score tuning.
+
+## Validation commands and build discipline
+
+From the repository root on Windows with .NET 8:
+
+```powershell
+dotnet restore OsuAimAnalyzer/OsuAimAnalyzer.csproj
+dotnet build OsuAimAnalyzer/OsuAimAnalyzer.csproj
+dotnet run --project OsuAimAnalyzer/OsuAimAnalyzer.csproj
+```
+
+Proposed B1 test-project path and command (not present today):
+
+```powershell
+dotnet test OsuAimAnalyzer.Tests/OsuAimAnalyzer.Tests.csproj
+```
+
+Use `OsuAimAnalyzer\build-release.bat` for a release/publish smoke check when shipping a batch. Record build and test outcomes, known failures, and manual UI evidence. Run targeted checks per change rather than claiming `dotnet test` currently provides coverage. No build or test was run as part of this documentation-only task.
+
+## Decisions and completion rules
+
+- Use inferred causes by default; physiological explanations remain hypotheses.
+- Retain current streak thresholds until minimum count and skipped-object policy are decided. The play-boundary bug does not require waiting on those threshold decisions.
+- Preserve existing screens and directional labels; do not reimplement AIM-005–AIM-007 just because they appear in the source backlog.
+- Keep Google Doc completion notes separate from verification status. Only mark an item verified after its acceptance checks pass.
+- Commit each coherent batch separately, report behavior and validation, and update the specification without renumbering IDs. This planning change itself adds only the two Markdown files and leaves application and Google Doc content unchanged.
