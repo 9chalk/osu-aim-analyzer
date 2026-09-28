@@ -1,5 +1,11 @@
 # Project Status
 
+## Public beta preparation — v0.1.0-beta.1
+
+IMPLEMENTED; NEEDS USER TEST. Added a screenshot-ready public feature guide, MIT license, beta test checklist, issue templates, release notes, and dependency license notices. Assembly/package version is 0.1.0-beta.1; scoring and database behavior are unchanged. TG6 remains deferred and nothing is marked ACCEPTED.
+
+Restore, Debug build, all 133 Release tests, and self-contained Windows x64 publish passed. Existing WFAC010 warning remains. Public ZIP excludes FFmpeg binaries (optional setup_audio.ps1 download), debug symbols, personal data, and reference material. Read-only reference hashes are unchanged; master remains adc29a1. Public tester validation is still required for startup, display scaling, replay import, and osu! playback of exported maps.
+
 ## Current batch
 
 Recent Play consolidation: **IMPLEMENTED; NEEDS USER TEST**. User-requested presentation work before additional features; TG6 remains deferred. No item is ACCEPTED. Branch: feature/toolkit-integration; master remains adc29a1.

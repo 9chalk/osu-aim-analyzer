@@ -4,6 +4,8 @@ TG5 uses the **Gyan FFmpeg 9.0.2 essentials Windows build**, including ffmpeg.ex
 
 ## Install and publish
 
+The public beta ZIP excludes FFmpeg binaries. Users may run `powershell -File .\setup_audio.ps1` in the extracted application folder to install the optional audio tools, then restart the application. Replay analysis and spacing-only exports need no audio setup. Public packaging must exclude locally installed FFmpeg binaries unless their separate redistribution obligations have been satisfied.
+
 Run `powershell -File OsuAimAnalyzer/setup_audio.ps1` from the repository root before building/testing. The script downloads the pinned archive, verifies SHA-256, then installs two binaries plus the vendor LICENSE and README into ignored `OsuAimAnalyzer/tools/ffmpeg/`. It writes distribution.json with the archive/source provenance. The project copies these sidecars into build and publish output; distribute the **whole publish folder**, not just OsuAimAnalyzer.exe. In a published folder, setup_audio.ps1 installs beside the application. Nothing downloads at app startup.
 
 - [Pinned archive](https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-9.0.2-essentials_build.zip)
