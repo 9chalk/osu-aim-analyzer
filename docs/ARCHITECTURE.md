@@ -87,3 +87,8 @@ The exporter no longer opens/discovers external .osb files. Only retained backgr
 ## Play-scoped repeated-pattern summaries
 
 AimErrorDiagnostics.Analyze still diagnoses/counts all selected transitions with the existing rules. Only streak discovery groups by positive PlayId and orders by time/object within each group. The derived AimCauseStreak now carries PlayId and shared Location text; no persisted data changes. Unknown IDs are excluded from streak inference, not from counts. Tie selection is deterministic (count descending, play ID ascending, then earliest local sequence). Direct UI/prose consumers include play context; profile accessibility and tooltip text retain the full location when the painted label is narrow.
+
+
+## Consolidated Recent Play reading pages
+
+MainForm maps Summary/Training/Compare into a single Run insights page, and combines Errors with the lazily generated Diagnosis readout. InspectorReadoutPage hosts the existing TextBox instances in full-width collapsible sections; content changes/width changes recalculate section heights. A single outer scrolling area replaces nested scroll panes. Headings expose expansion state through accessibility text. Six navigation destinations remain, with original Overview/Practice/tool ownership unchanged. PlayInsightBuilder drops repeated demand/mechanical paragraphs only; the same values remain in the consolidated information hierarchy.

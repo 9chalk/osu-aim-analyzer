@@ -184,6 +184,7 @@ public class InspectorLayoutTests
                 const BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Instance;
                 var pageHost = (Panel)typeof(MainForm).GetField("playInspectorPageHost", flags)!.GetValue(main)!;
                 var pages = (Dictionary<string, Control>)typeof(MainForm).GetField("playInspectorPages", flags)!.GetValue(main)!;
+                Assert.Equal(new[] { "Advanced", "Diagnosis", "Overview", "Practice", "Run insights", "Top errors" }, pages.Keys.OrderBy(k => k).ToArray());
                 var switchPage = typeof(MainForm).GetMethod("ShowInspectorPage", flags)!;
                 // Host only the inspector; never show MainForm or start ingestion/watchers.
                 Control inspector = pageHost.Parent!.Parent!;
@@ -193,7 +194,7 @@ public class InspectorLayoutTests
                 foreach (var size in new[] { new Size(650, 720), new Size(900, 900), new Size(500, 500) })
                 {
                     host.ClientSize = size;
-                    foreach (string key in new[] { "Summary", "Training", "Compare", "Errors", "Diagnosis", "Top errors", "Practice" })
+                    foreach (string key in new[] { "Run insights", "Diagnosis", "Top errors", "Practice" })
                     {
                         switchPage.Invoke(main, new object[] { key });
                         host.PerformLayout();
@@ -209,10 +210,9 @@ public class InspectorLayoutTests
                             Assert.Contains("Select an analyzed play", practiceText.Text);
                             continue;
                         }
-                        var layout = Assert.IsType<TableLayoutPanel>(pages[key].Controls[0]);
-                        var text = Assert.IsType<TextBox>(layout.GetControlFromPosition(0, 1));
-                        Assert.True(text.Width >= pageHost.Width - 24, $"{key}: width {text.Width}/{pageHost.Width}");
-                        Assert.True(text.Height >= pageHost.Height - 54, $"{key}: height {text.Height}/{pageHost.Height}");
+                        var readingPage = Assert.IsType<InspectorReadoutPage>(pages[key]);
+                        Assert.True(readingPage.AutoScroll);
+                        Assert.All(readingPage.Controls.OfType<Panel>(), card => Assert.True(card.Width >= pageHost.Width - 50));
                     }
                     switchPage.Invoke(main, new object[] { "Overview" });
                     Assert.True(pageHost.Height < size.Height - 150, "Overview should retain its play header.");

@@ -334,11 +334,10 @@ public sealed class MainForm : Form
 
         playInspectorPages.Clear();
         playInspectorPages["Overview"] = BuildInspectorOverviewPage();
-        playInspectorPages["Summary"] = ToolkitUi.Wrap(playInspectorOverview, "Plain-English run summary");
-        playInspectorPages["Training"] = ToolkitUi.Wrap(playInspectorTraining, "Training readout for this play");
-        playInspectorPages["Compare"] = ToolkitUi.Wrap(playInspectorComparison, "Comparison with nearby attempts");
-        playInspectorPages["Errors"] = ToolkitUi.Wrap(playInspectorErrorsText, "Error interpretation");
-        playInspectorPages["Diagnosis"] = ToolkitUi.Wrap(playInspectorDiagnosis, "Objective diagnosis · this run vs your similar-map history");
+        playInspectorPages["Run insights"] = new InspectorReadoutPage("Run insights", "How this run went, what to train, and how it compares.",
+            ("At a glance", playInspectorOverview), ("Training focus", playInspectorTraining), ("Compared with earlier attempts", playInspectorComparison));
+        playInspectorPages["Diagnosis"] = new InspectorReadoutPage("Diagnosis", "Movement and direction first. Similar-map evidence adds context, not proof of causation.",
+            ("Movement & direction", playInspectorErrorsText), ("Similar-map evidence", playInspectorDiagnosis));
         playInspectorPages["Top errors"] = BuildInspectorTopErrorsPage();
         playInspectorPages["Advanced"] = playInspectorAdvancedHost;
         playInspectorPages["Practice"] = playInspectorPractice;
@@ -401,10 +400,7 @@ public sealed class MainForm : Form
         followLatestPlay.Margin = new Padding(3, 0, 0, 8);
         buttons.Controls.Add(followLatestPlay);
 
-        AddNav("Summary", "Summary");
-        AddNav("Training", "Training");
-        AddNav("Compare", "Compare");
-        AddNav("Errors", "Errors");
+        AddNav("Run insights", "Insights");
         AddNav("Diagnosis", "Diagnosis");
         AddNav("Practice", "Practice");
 

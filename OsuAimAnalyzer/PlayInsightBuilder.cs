@@ -79,8 +79,7 @@ public static class PlayInsightBuilder
             $"Ideal computer-path match: {Humanize.Score(play.IdealPathMatch)}.";
 
         string training =
-            $"TRAINING VALUE\r\n{TrainingAssessment(play)}\r\n\r\n" +
-            $"Current demand: {play.StarRating:0.00}★ · AR {play.EffectiveAr:0.0} · {play.MeanBpm:0} BPM · {Humanize.Spacing(play.SpacingP75, true)}.\r\n" +
+            $"{TrainingAssessment(play)}\r\n\r\n" +
             $"Aim tension: {Humanize.Tension(play.AimTension)}.";
 
         string comparison = history;
@@ -96,7 +95,6 @@ public static class PlayInsightBuilder
             $"WHY CONTROL BROKE\r\n{causeText}{streakText}\r\n\r\n" +
             $"WHERE THE CURSOR ENDED\r\nAverage center error: {avgCenterError:0.00}R from target center · mean bias: {biasText}.\r\n" +
             $"Direction mix: {errorText}.\r\n\r\n" +
-            $"MECHANICAL CONTEXT\r\nWeakest mechanic: {weakest.Key} at {Humanize.Score(weakest.Value)} · ideal-path match {Humanize.Score(play.IdealPathMatch)} · aim tension {Humanize.Tension(play.AimTension)}.\r\n\r\n" +
             $"Cause is inferred from the stored landing, arrival, stability, braking, straightness, ideal-path and signed-error telemetry. Generate top errors reconstructs the actual cursor paths; Advanced diagnostics shows the likely cause object by object.";
 
         return new PlayInsightSections(overview, training, comparison, errorsText);

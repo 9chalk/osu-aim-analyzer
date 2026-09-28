@@ -226,3 +226,12 @@ AimErrorDiagnostics retains aggregate diagnoses/counts and computes candidate st
 Validation: 132 Release tests pass (12 new), including counts/input/diagnosis preservation, interleaving, gap boundaries, ties, missing IDs and profile reset. Existing snapshots were not regenerated. Build/publish: publish-streak-fix/OsuAimAnalyzer.exe. Manual gate: inspect Aim Analysis's historical Why control breaks panel and history summary, switch history filters, and compare Recent Play/detail summaries. Historical streaks may legitimately shrink or change owner. No status is ACCEPTED.
 
 Next defined work: B3 presentation verification; broader TG6 generation still needs map/category/count scope decisions. No automatic schema migration, downloads or learning/outcome tracking is introduced.
+
+
+## Recent Play presentation consolidation
+
+The user requested information consolidation and a cleaner UI before further features. Delivered: Summary + Training + Compare → Insights; Errors + Diagnosis → Diagnosis. Four main pages and two tools remain. This is focused B3-related presentation work, not completion of the entire B3 verification matrix and not TG6 implementation.
+
+Reuse existing insight/diagnosis builders and controls; InspectorReadoutPage owns only the presentation layout. Remove repeated demand/mechanical prose while retaining its values on Insights. Preserve lazy diagnosis loading, selected-play clearing, Overview charts and Practice/export sessions. Sections expand to content height within one page scrollbar, avoiding small nested panes.
+
+Validation: 133 tests, including updated MainForm navigation/resize checks and a new STA control test for long text, no internal/horizontal scrolling, collapse/expand and content refresh. Synthetic layout render inspected. Test build: publish-recent-play/OsuAimAnalyzer.exe. Manually review Insights/Diagnosis with a real play, collapse sections, resize and switch plays; verify Practice and tools remain accessible. No item is ACCEPTED.

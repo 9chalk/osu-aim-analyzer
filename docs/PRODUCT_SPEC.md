@@ -257,3 +257,12 @@ All 120 tests pass with updated regressions for complete series generation despi
 AIM-008 is IMPLEMENTED; NEEDS USER TEST. AIM-004/AIM-007 historical streak correctness now uses per-play sequences; broader presentation and exact shake-off evidence remain separate. Tests first reproduced false cross-play merging and loss of valid streaks through interleaving. The existing two-object/1,200 ms upper limits remain; object indices must advance, so duplicate/backward objects cannot extend a streak. Clean or different causes break the sequence within its own play.
 
 Equal-length candidates choose the lowest PlayId, then earliest time/object within that play. Unknown/nonpositive IDs contribute to diagnoses/counts but never to streaks because ownership cannot be established. Profile, tooltip/accessibility text, run/detail summaries and lifetime prose identify the owning play and object range. No diagnosis threshold, production scoring, direction label, stored metric or schema change occurs. All 132 tests pass, including unchanged diagnosis snapshots. No item is ACCEPTED; TG6 remains deferred.
+
+
+## Recent Play consolidation — user-requested presentation update
+
+IMPLEMENTED; NEEDS USER TEST. Recent Play now has six destinations: Overview, Insights, Diagnosis, Practice, Top errors and Advanced. Summary/Training/Compare become three full-width sections on Run insights. Errors joins Diagnosis as Movement & direction, followed by Similar-map evidence. Charts stay on Overview; Practice and reconstruction/detail tools keep their existing workflows.
+
+InspectorReadoutPage supplies a single scrolling surface with collapsible section headings, selectable readouts, clearer title/subtitle hierarchy and consistent spacing. Demand values appear once in At a glance rather than repeating in Training focus; the duplicated mechanical-context paragraph is removed from Errors because those values remain in Insights. Directional errors, inferred causes, comparisons, evidence and training advice remain available. No scoring, diagnosis rule, storage, export or source-map behavior changes.
+
+Verification includes six-page navigation, full inner-height layouts, narrow/wide resizing, long-content scrolling, collapse/expand, replacement content and visual review using synthetic data. All 133 tests pass. Real-data readability/DPI is NEEDS USER TEST; no item is ACCEPTED.
