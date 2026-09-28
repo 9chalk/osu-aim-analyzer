@@ -1,0 +1,37 @@
+name: Bug report
+description: Report a problem with the beta
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: "Review screenshots and logs for private information before posting. Do not upload your whole replay library or database."
+  - type: input
+    id: version
+    attributes:
+      label: Release version
+      placeholder: v0.1.0-beta.1
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Windows version and display scaling
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Include relevant mods and which page or action failed.
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: Expected and actual results
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Screenshots or relevant log excerpts

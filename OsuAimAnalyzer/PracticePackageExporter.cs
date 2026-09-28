@@ -1,0 +1,236 @@
+using System.IO.Compression;
+using System.Security.Cryptography;
+using System.Text.Json;
+using System.Text.RegularExpressions;
+
+namespace OsuAimAnalyzer;
+
+/// <summary>One staged package for an explicitly selected set. No source writes or automatic import.</summary>
+public static class PracticePackageExporter
+{
+    private const long MaximumAssetBytes = 256L * 1024 * 1024;
+    private const long MaximumPackageBytes = 1024L * 1024 * 1024;
+    private static readonly Regex SampleBank = new(@"^(normal|soft|drum)-(hitnormal|hitwhistle|hitfinish|hitclap|slidertick|sliderslide|sliderwhistle)\d*\.(wav|ogg|mp3)$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    public static async Task<PublishedPracticePackage> ExportAsync(PracticeSourceIdentity source,
+        IReadOnlyList<PracticeVariant> selectedVariants, string destination, IEnumerable<string>? forbiddenRoots = null,
+        IProgress<string>? progress = null, CancellationToken token = default, IPracticeAudioRenderer? audioRenderer = null)
+    {
+        token.ThrowIfCancellationRequested();
+        var selected = selectedVariants.ToArray();
+        if (selected.Length is < 1 or > 5) throw new ArgumentException("Select between one and five variants.");
+        bool needsAudio = selected.Any(v => v.Options.SourceClockRate != 1);
+        string root = Path.GetDirectoryName(source.BeatmapPath)!;
+        string[] forbidden = (forbiddenRoots ?? Array.Empty<string>()).ToArray();
+        destination = PracticeExportPaths.Destination(destination, root, forbidden);
+        PracticeExportPaths.CheckNoLinks(source.BeatmapPath);
+        var original = await PracticePreviewSource.ReadVerifiedAsync(source, token);
+        var practiceSource = original.WithoutOptionalMedia();
+        var resources = BeatmapResources.Inspect(practiceSource, includeStoryboards: true);
+        Validate(resources);
+        if (resources.Files.Count(r => r.Kind == "audio") != 1) throw new NotSupportedException("Export requires one explicit AudioFilename.");
+        var assets = resources.Files.Select(r => r.RelativePath).ToList();
+        var discoveredFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        // Preserve local sample-bank fallback without guessing slider edge/tick sample selection.
+        // Only named banks are included, never unrelated difficulties or arbitrary mapset files.
+        foreach (string file in Directory.EnumerateFiles(root))
+        {
+            token.ThrowIfCancellationRequested();
+            if (SampleBank.IsMatch(Path.GetFileName(file))) { assets.Add(Path.GetFileName(file)); discoveredFiles.Add(Path.GetFileName(file)); }
+        }
+        var assetPaths = new SortedDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (string asset in assets)
+        {
+            string entry = asset.Replace('\\', '/');
+            string extension = Path.GetExtension(entry).ToLowerInvariant();
+            if (extension is not (".mp3" or ".ogg" or ".wav" or ".jpg" or ".jpeg" or ".png" or ".bmp" or ".gif"))
+                throw new NotSupportedException("Unsupported asset type: " + entry);
+            assetPaths[entry] = PracticeExportPaths.Resource(root, entry);
+        }
+        if (assetPaths.Count > 20000) throw new NotSupportedException("Too many resources in this package.");
+        long total = 0;
+        foreach (string path in assetPaths.Values)
+        {
+            long length = new FileInfo(path).Length;
+            total += length;
+            if (length > MaximumAssetBytes || total > MaximumPackageBytes) throw new NotSupportedException("Export exceeds the 256 MiB asset or 1 GiB total resource limit.");
+        }
+        string id = Guid.NewGuid().ToString("N");
+        string staging = Path.Combine(Path.GetDirectoryName(destination)!, ".aim-practice-" + id + ".tmp");
+        string audioDirectory = Path.Combine(Path.GetDirectoryName(destination)!, ".aim-audio-" + id);
+        var ownedAudioFiles = new List<string>();
+        var renderedFiles = new Dictionary<string, string>();
+        var renderedMetadata = new List<object>();
+        var audioJobs = new Dictionary<string, string>();
+        var checksums = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        bool ownsStaging = false, ownsAudioDirectory = false;
+        string? sourceAudioHash = null;
+        string sourceAudioEntry = resources.Files.Single(r => r.Kind == "audio").RelativePath.Replace('\\', '/');
+        string? audioSnapshot = null;
+        var maps = new Dictionary<string, byte[]>();
+        try
+        {
+            if (needsAudio)
+            {
+                audioRenderer ??= new PracticeAudioRenderer();
+                if (Directory.Exists(audioDirectory)) throw new IOException("Audio staging directory already exists.");
+                Directory.CreateDirectory(audioDirectory);
+                ownsAudioDirectory = true;
+                audioSnapshot = Path.Combine(audioDirectory, "source" + Path.GetExtension(sourceAudioEntry));
+                await using var input = new FileStream(assetPaths[sourceAudioEntry], FileMode.Open, FileAccess.Read, FileShare.Read, 65536, true);
+                await using var snapshot = new FileStream(audioSnapshot, FileMode.CreateNew, FileAccess.Write, FileShare.None, 65536, true);
+                ownedAudioFiles.Add(audioSnapshot);
+                sourceAudioHash = await CopyHashAsync(input, snapshot, MaximumAssetBytes, token);
+            }
+            var recipes = new List<object>();
+            var distinct = new HashSet<string>();
+            var sourceMap = BeatmapParser.ParseDocument(original);
+            for (int i = 0; i < selected.Length; i++)
+            {
+                var variant = selected[i];
+                if (variant.Name.Length > 100 || variant.Name.Any(char.IsControl)) throw new ArgumentException("Invalid variant name.");
+                var fresh = BeatmapTransforms.Apply(practiceSource, variant.Options, token);
+                if (!fresh.Document.ToBytes().SequenceEqual(variant.Preview.Document.WithoutOptionalMedia().ToBytes()))
+                    throw new InvalidOperationException("Preview content does not match the source/options. Rebuild the preview.");
+                string transformedHash = Hash(fresh.Document.ToBytes());
+                if (transformedHash == Hash(practiceSource.ToBytes()) || !distinct.Add(transformedHash + (variant.Options.SourceClockRate == 1 ? "" : variant.Options.PitchPolicy.ToString()))) throw new ArgumentException("Unchanged or duplicate variants cannot be exported.");
+                string entry = $"practice-{id[..8]}-{i + 1:00}.osu";
+                var generated = fresh.Document.WithMetadata(new Dictionary<string, string>
+                {
+                    ["BeatmapID"] = "0", ["BeatmapSetID"] = "-1",
+                    ["Version"] = $"{sourceMap.Version} · Practice {i + 1} {variant.Name} {id[..8]}"
+                });
+                if (variant.Options.SourceClockRate != 1)
+                {
+                    string job = sourceAudioHash + "|" + variant.Options.SourceClockRate.ToString("G17", System.Globalization.CultureInfo.InvariantCulture)
+                        + "|" + variant.Options.PitchPolicy + "|" + PracticeAudioRenderer.Distribution;
+                    if (!audioJobs.TryGetValue(job, out string? audioEntry))
+                    {
+                        audioEntry = $"practice-{id}-audio-{audioJobs.Count + 1}.wav";
+                        string audioPath = Path.Combine(audioDirectory, audioEntry);
+                        ownedAudioFiles.Add(audioPath);
+                        progress?.Report("Rendering audio for " + variant.Name + "…");
+                        var rendered = await audioRenderer!.RenderAsync(audioSnapshot!, audioPath, variant.Options.SourceClockRate, variant.Options.PitchPolicy, token);
+                        long length = new FileInfo(audioPath).Length;
+                        total += length;
+                        if (length > MaximumAssetBytes || total > MaximumPackageBytes) throw new IOException("Rendered audio exceeds package resource limits.");
+                        audioJobs.Add(job, audioEntry);
+                        renderedFiles.Add(audioEntry, audioPath);
+                        renderedMetadata.Add(new { Entry = audioEntry, SourceSha256 = sourceAudioHash, variant.Options.SourceClockRate, variant.Options.PitchPolicy, Validation = rendered });
+                    }
+                    generated = generated.WithSectionValues("General", new Dictionary<string, string> { ["AudioFilename"] = audioEntry });
+                }
+                byte[] bytes = generated.ToBytes();
+                maps.Add(entry, bytes);
+                recipes.Add(new { Entry = entry, GeneratedMd5 = Convert.ToHexString(MD5.HashData(bytes)).ToLowerInvariant(),
+                    Sha256 = Hash(bytes), variant.Name, variant.Options, variant.Reason, fresh.AchievedHeadSpacingRatio,
+                    fresh.RepositionedGroups, fresh.RelaxedGroups, fresh.PreservedOutsideAnchors });
+            }
+            await using (var output = new FileStream(staging, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None, 65536, true))
+            {
+                ownsStaging = true;
+                using (var archive = new ZipArchive(output, ZipArchiveMode.Create, leaveOpen: true))
+                {
+                    long copiedResourceBytes = 0;
+                    foreach (var asset in assetPaths)
+                    {
+                        token.ThrowIfCancellationRequested();
+                        progress?.Report("Copying " + asset.Key);
+                        PracticeExportPaths.Resource(root, asset.Key);
+                        await using var input = new FileStream(asset.Value, FileMode.Open, FileAccess.Read, FileShare.Read, 65536, true);
+                        copiedResourceBytes += input.Length;
+                        if (copiedResourceBytes > MaximumPackageBytes) throw new IOException("Resources grew beyond the 1 GiB package limit.");
+                        await using var target = archive.CreateEntry(asset.Key, CompressionLevel.Optimal).Open();
+                        checksums.Add(asset.Key, await CopyHashAsync(input, target, MaximumAssetBytes, token));
+                    }
+                    if (sourceAudioHash is not null && checksums[sourceAudioEntry] != sourceAudioHash)
+                        throw new IOException("Source audio changed during rendering. Rebuild and retry.");
+                    foreach (var audio in renderedFiles)
+                    {
+                        if (checksums.ContainsKey(audio.Key)) throw new IOException("Audio entry collision.");
+                        await using var input = new FileStream(audio.Value, FileMode.Open, FileAccess.Read, FileShare.Read, 65536, true);
+                        copiedResourceBytes += input.Length;
+                        if (copiedResourceBytes > MaximumPackageBytes) throw new IOException("Package resource limit exceeded.");
+                        await using var target = archive.CreateEntry(audio.Key, CompressionLevel.Optimal).Open();
+                        checksums.Add(audio.Key, await CopyHashAsync(input, target, MaximumAssetBytes, token));
+                    }
+                    foreach (var map in maps) await WriteEntryAsync(archive, map.Key, map.Value, checksums, token);
+                    byte[] manifest = JsonSerializer.SerializeToUtf8Bytes(new
+                    {
+                        SchemaVersion = 2, PackageId = id, CreatedUtc = DateTime.UtcNow,
+                        Source = new { source.BeatmapHash, source.SelectedPlayId, source.PlayedMods, File = Path.GetFileName(source.BeatmapPath) },
+                        Title = sourceMap.Title, Variants = recipes,
+                        RenderedAudio = renderedMetadata,
+                        Resources = assetPaths.Keys.Concat(renderedFiles.Keys).Select(e => new { Entry = e, Sha256 = checksums[e] }).ToArray(),
+                        Policy = "Source-relative timing; explicit pitch; local sample banks retained; selected variants only; video, storyboards and storyboard sound effects omitted."
+                    }, new JsonSerializerOptions { WriteIndented = true });
+                    await WriteEntryAsync(archive, "aim-analyzer-provenance.json", manifest, checksums, token);
+                }
+                await output.FlushAsync(token);
+                output.Flush(flushToDisk: true);
+            }
+            progress?.Report("Validating package and source files…");
+            using (var archive = ZipFile.OpenRead(staging))
+            {
+                if (archive.Entries.Count != checksums.Count) throw new IOException("Package entry count mismatch.");
+                foreach (var entry in archive.Entries)
+                {
+                    await using var input = entry.Open();
+                    if (await CopyHashAsync(input, Stream.Null, MaximumPackageBytes, token) != checksums[entry.FullName])
+                        throw new IOException("Package validation failed: " + entry.FullName);
+                }
+            }
+            await PracticePreviewSource.ReadVerifiedAsync(source, token);
+            var currentDiscovered = Directory.EnumerateFiles(root).Select(Path.GetFileName)
+                .Where(name => name is not null && SampleBank.IsMatch(name))
+                .Select(name => name!).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            if (!discoveredFiles.SetEquals(currentDiscovered)) throw new IOException("Mapset resources changed during export. Retry after editing has finished.");
+            foreach (var asset in assetPaths)
+            {
+                PracticeExportPaths.Resource(root, asset.Key);
+                await using var input = new FileStream(asset.Value, FileMode.Open, FileAccess.Read, FileShare.Read, 65536, true);
+                if (await CopyHashAsync(input, Stream.Null, MaximumAssetBytes, token) != checksums[asset.Key])
+                    throw new IOException("A resource changed during export: " + asset.Key);
+            }
+            token.ThrowIfCancellationRequested();
+            PracticeExportPaths.Destination(destination, root, forbidden);
+            // Commit point: same-directory, non-overwriting rename. Cancellation after this point cannot undo publication.
+            File.Move(staging, destination, overwrite: false);
+            return new(source, destination, maps.Keys);
+        }
+        finally
+        {
+            if (ownsStaging && File.Exists(staging)) File.Delete(staging);
+            foreach (string file in ownedAudioFiles) if (File.Exists(file)) File.Delete(file);
+            if (ownsAudioDirectory) Directory.Delete(audioDirectory, recursive: false);
+        }
+    }
+
+    private static void Validate(BeatmapResources resources)
+    {
+        if (resources.Issues.Count > 0) throw new NotSupportedException(string.Join("\n", resources.Issues));
+    }
+    private static string Hash(byte[] bytes) => Convert.ToHexString(SHA256.HashData(bytes));
+    private static async Task WriteEntryAsync(ZipArchive archive, string entry, byte[] bytes, Dictionary<string, string> checksums, CancellationToken token)
+    {
+        if (checksums.ContainsKey(entry)) throw new IOException("Archive entry collision: " + entry);
+        await using var target = archive.CreateEntry(entry, CompressionLevel.Optimal).Open();
+        await target.WriteAsync(bytes, token);
+        checksums.Add(entry, Hash(bytes));
+    }
+    private static async Task<string> CopyHashAsync(Stream input, Stream output, long maximumBytes, CancellationToken token)
+    {
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        var buffer = new byte[65536];
+        long total = 0;
+        int read;
+        while ((read = await input.ReadAsync(buffer, token)) > 0)
+        {
+            total += read;
+            if (total > maximumBytes) throw new IOException("Resource grew beyond the supported size.");
+            hash.AppendData(buffer, 0, read);
+            await output.WriteAsync(buffer.AsMemory(0, read), token);
+        }
+        return Convert.ToHexString(hash.GetHashAndReset());
+    }
+}

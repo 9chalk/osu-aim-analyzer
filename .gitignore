@@ -1,0 +1,37 @@
+# .NET build and publish output (including generated binaries)
+[Bb]in/
+[Oo]bj/
+/artifacts/
+
+# Downloaded by setup_native.ps1; retain any native source files
+/OsuAimAnalyzer/native/*.dll
+/OsuAimAnalyzer/tools/ffmpeg/
+
+# Local IDE state
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.idea/**/workspace.xml
+.idea/**/tasks.xml
+
+# Test output and caches; keep test inputs and fixtures
+TestResults/
+BenchmarkDotNet.Artifacts/
+.nuget/packages/
+*.cache
+
+# Temporary and operating-system files
+*.tmp
+*.temp
+*.swp
+*.swo
+~$*
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Local read-only Toolkit reference material; never include in production commits
+/reference/
+/osu_toolkit_unified_v1_3_source(1).zip
