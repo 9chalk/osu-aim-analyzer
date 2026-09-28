@@ -2,37 +2,36 @@
 
 ## Current batch
 
-TG3 — Evidence-backed series planner and Recent Play preview: **IMPLEMENTED; NEEDS USER TEST**. TG4 is NOT STARTED. No item is ACCEPTED.
+TG4 — Staged spacing/stat package export: **IMPLEMENTED; NEEDS USER TEST**. TG5 is NOT STARTED. No item is ACCEPTED.
 Branch: feature/toolkit-integration. Master baseline remains adc29a1.
-
-The user confirmed the TG2 Recent Play layout works and approved TG3's conservative preview recipe defaults.
+The user confirmed TG3's preview looked alright and requested continued development.
 
 ## Delivered
 
-Dashboard → Recent Play → Practice → Build preview now shows up to five distinct in-memory recipes, changes, evidence/fallback reasons, achieved head spacing, uncertainty and future audio requirements. Sparse evidence normally yields four recipes; eased AR requires compatible evidence. OD/CS/HP remain fixed because OD-specific evidence is not currently available.
+Practice → Build preview → Export spacing/stat maps… lets the user explicitly select eligible rate-1 variants and choose a new .osz destination. The current planner normally offers Reduced spacing alone for export. Slowdown variants remain unavailable until TG5 and are counted/explained in the dialog; this is not presented as a complete series.
 
-PracticeSeriesPlanner reuses TG1 contracts/structured diagnosis and TG2 document/transforms. PracticePreviewSession and PracticePreviewSource provide cancellation, stale-result rejection and bounded read-only source hash checks before/after computation. Existing MainForm selection, BeatmapResolver and database remain authoritative. No map/audio generation, score change, new schema or reference runtime was introduced.
+One shared exporter supports multiple spacing/stat variants, source/options revalidation, preserving metadata changes, nested resources, basic unchanged storyboards/animations, conservative local hitsound-bank inclusion, provenance JSON, ZIP/hash verification and non-overwriting same-directory publication. Open package is a separate user-triggered import action. There is no audio renderer, new schema, scoring change or source-map write.
 
 ## Verification
 
 - Restore and Debug application build: succeeded.
-- Release suite: 87 passed, zero failed/skipped (71 existing plus 16 new).
-- Windows x64 self-contained single-file publish: succeeded in OsuAimAnalyzer/bin/Release/net8.0-windows/win-x64/publish-tg3/.
-- Existing WFAC010 high-DPI warning remains; no new test warnings.
-- STA tests cover three layout sizes and the MainForm background preview/retry/changed-source/selection-reset flow using synthetic files and in-memory SQLite.
-- Real-history/DPI visual testing of TG3 remains pending. No item is ACCEPTED.
-- Reference remains read-only and excluded from commits; master baseline preserved.
+- Release suite: 101 passed, zero failed/skipped (87 existing plus 14 new).
+- Windows x64 self-contained single-file publish: succeeded in OsuAimAnalyzer/bin/Release/net8.0-windows/win-x64/publish-tg4/.
+- Existing WFAC010 high-DPI warning remains.
+- Tests cover selected multi-difficulty archive contents, fresh IDs/version names, title/background bytes, nested .osb/animation resources, hitsound banks, source immutability, collisions, missing/changed files, cancellation cleanup, unsafe paths/junctions and MainForm publish/open state.
+- Tests use synthetic asset bytes: actual osu! import, separate-mapset behavior and media playback remain manual checks.
+- Reference hashes unchanged; no reference files tracked. Master baseline preserved.
 
 ## Manual checks
 
-1. Close the prior app and launch publish-tg3/OsuAimAnalyzer.exe.
-2. Select a known play, open Practice, and click Build preview. Read changes, reasons and omitted-variant notes; no files should be generated.
-3. Try sparse-history and modded plays. Suggestions should clearly identify conservative defaults and NM/source-relative targets.
-4. Try cancel/retry and select another play during work; old results should not replace the current selection.
-5. Resize and compare existing Diagnosis/score views with familiar results. Pitch selection affects preview intent only; rebuild after changing it.
+1. Close the prior app and launch publish-tg4/OsuAimAnalyzer.exe.
+2. Select a known play, open Practice and Build preview. Choose Export spacing/stat maps… and confirm the dialog explicitly excludes slowdown variants.
+3. Save the selected Reduced spacing map to a new local .osz path outside Songs. Original map files should remain unchanged.
+4. Optionally Open package in osu!. Check it imports as a separate local mapset, retains the original visible song title/background/audio, and contains only the selected practice difficulty with reduced spacing. Check the original map still works.
+5. Try cancellation and choosing an existing filename. No finished package should be overwritten; failed/canceled work before publication should leave no staging file.
 
-## Remaining limits and next batch
+## Limits and next batch
 
-Policy thresholds are conservative engineering defaults, not causal evidence. Reliable contrary/conflicting evidence blocks reductions; modded-play evidence is not mapped to NM targets. Slider exits remain approximations, out-of-bounds spacing fails explicitly, and storyboard/video rate recipes are unavailable. Preview source size is limited to 16 MiB. Displayed results are snapshots; subsequent file edits require rebuilding.
+TG5 is required for playable slowdown exports. Current source-relative stat/mod rules remain unchanged. Slider spacing still uses exit proxies, not exact curve evaluation. Basic storyboards are preserved only at unchanged rate; variables and unsupported resource/event types fail explicitly. Linked/reparse paths are rejected, including linked output folders; choose a normal local directory.
 
-TG4 must implement staged export, complete resources, physical containment checks and new identities/provenance. TG5 must render rate-adjusted audio. No export button exists in TG3. AIM-008 remains separate; the planner does not use lifetime streak evidence.
+Documents are capped at 16 MiB, assets at 256 MiB each and 1 GiB total, and resource entries at 20,000. Assets are copied, not decoded. Rechecks detect normal editing races but do not constitute a hostile concurrent-filesystem security boundary. Cancellation after the atomic publication point retains the completed user-selected artifact. Import behavior remains NEEDS USER TEST, not ACCEPTED.

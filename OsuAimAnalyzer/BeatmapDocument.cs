@@ -53,6 +53,35 @@ public sealed class BeatmapDocument
     internal BeatmapDocument Replace(IReadOnlyDictionary<int, string> replacements)
         => new(Lines.Select((l, i) => replacements.TryGetValue(i, out var text) ? l with { Text = text } : l), encoding, preamble);
 
+    internal BeatmapDocument WithMetadata(IReadOnlyDictionary<string, string> values)
+    {
+        if (Lines.Count(l => l.Text.Trim() == "[Metadata]") != 1)
+            throw new NotSupportedException("Export requires exactly one Metadata section.");
+        var remaining = new Dictionary<string, string>(values);
+        var seen = new HashSet<string>();
+        var output = new List<BeatmapDocumentLine>();
+        string ending = Lines.FirstOrDefault(l => l.Ending.Length > 0)?.Ending ?? "\r\n";
+        int last = Lines.Select((l, i) => (l, i)).Last(pair => pair.l.Section == "Metadata").i;
+        for (int i = 0; i < Lines.Count; i++)
+        {
+            var line = Lines[i];
+            int colon = line.Text.IndexOf(':');
+            if (line.Section == "Metadata" && colon > 0 && IsContent(line))
+            {
+                string key = line.Text[..colon].Trim();
+                if (!seen.Add(key)) throw new NotSupportedException("Duplicate metadata key: " + key);
+                if (remaining.Remove(key, out var value)) line = line with { Text = key + ":" + value };
+            }
+            output.Add(line);
+            if (i == last && remaining.Count > 0)
+            {
+                if (output[^1].Ending.Length == 0) output[^1] = output[^1] with { Ending = ending };
+                foreach (var pair in remaining) output.Add(new("Metadata", pair.Key + ":" + pair.Value, ending));
+            }
+        }
+        return new(output, encoding, preamble);
+    }
+
     internal static bool IsContent(BeatmapDocumentLine line)
     {
         string text = line.Text.Trim();

@@ -7,6 +7,52 @@ namespace OsuAimAnalyzer.Tests;
 public class InspectorLayoutTests
 {
     [Fact]
+    public void PracticeExport_MainFormPublishesExplicitSubsetAndEnablesOpen()
+    {
+        Exception? failure = null;
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                using var files = new PracticeExportTests();
+                using var db = new AnalyzerDatabase(":memory:"); db.Initialize();
+                string root = Path.GetDirectoryName(files.OutputPath)!;
+                var paths = new AppPaths { DataDirectory = root, SettingsPath = Path.Combine(root, "settings"), DatabasePath = ":memory:", CollectionStatePath = Path.Combine(root, "collections") };
+                using var main = new MainForm(paths, new AppSettings(), db);
+                const BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Instance;
+                typeof(MainForm).GetField("inspectorPlayId", flags)!.SetValue(main, (long?)1);
+                var control = (PracticePreviewControl)typeof(MainForm).GetField("playInspectorPractice", flags)!.GetValue(main)!;
+                using var host = new Form { ClientSize = new Size(650, 720), ShowInTaskbar = false, StartPosition = FormStartPosition.Manual, Location = new Point(-30000, -30000) };
+                host.Controls.Add(control); host.Show();
+                control.Reset("Synthetic export");
+                var series = files.Preview;
+                using var choice = new PracticeExportSelectionForm(series);
+                Assert.Single(choice.SelectedVariants);
+                Assert.Equal("Reduced spacing", choice.SelectedVariants[0].Name);
+                control.ShowPreview(series, PracticePreviewControl.FormatPreview(series));
+                var work = (Task)typeof(MainForm).GetMethod("ExportPracticeToPathAsync", flags)!.Invoke(main, new object[] { series, choice.SelectedVariants, files.OutputPath })!;
+                var timeout = System.Diagnostics.Stopwatch.StartNew();
+                while (!work.IsCompleted && timeout.Elapsed < TimeSpan.FromSeconds(10)) { Application.DoEvents(); Thread.Sleep(1); }
+                Assert.True(work.IsCompletedSuccessfully, work.Exception?.ToString());
+                Application.DoEvents(); // queued progress must not overwrite the published result
+                var readout = control.Controls.OfType<TextBox>().Single();
+                Assert.Contains("Exported 1", readout.Text);
+                Assert.Contains("Slowdown variants were not included", readout.Text);
+                var open = control.Controls.OfType<FlowLayoutPanel>().Single().Controls.OfType<Button>().Single(b => b.Text == "Open package");
+                Assert.True(open.Enabled);
+                Assert.True(File.Exists(files.OutputPath));
+                Assert.Empty(db.LoadPlays()); // exporting does not add or mutate analysis history
+                host.Close();
+                ((IDisposable)typeof(MainForm).GetField("collectionService", flags)!.GetValue(main)!).Dispose();
+            }
+            catch (Exception e) { failure = e; }
+        });
+        thread.SetApartmentState(ApartmentState.STA); thread.Start();
+        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "Export UI test timed out.");
+        if (failure is not null) ExceptionDispatchInfo.Capture(failure).Throw();
+    }
+
+    [Fact]
     public void PracticePreview_MainFormWorkerCompletesRetriesAndDiscardsCanceledSelection()
     {
         Exception? failure = null;

@@ -180,4 +180,14 @@ Policy details and limitations are recorded in PRODUCT_SPEC.md. Sparse evidence 
 
 Verification: all 87 native tests pass, including deterministic/bounded policy, weak/invalid/conflicting evidence, DT/NC/HT/HR/EZ boundaries, unsupported-video fallback, duplicate prevention, changed/missing source, request cancellation and stale completions. STA tests exercise MainForm's real worker with synthetic SQLite/source data, retry after file change, selection reset, responsive UI dispatch and layout at three sizes. Existing diagnosis snapshots remain unchanged.
 
-Manual gate: launch the TG3 build, select a play, open Practice, build/rebuild a preview, try cancel and another play, compare sparse/modded cases, and resize/read explanations. No item is ACCEPTED. TG4 is NOT STARTED; its next deliverable is staged spacing/stat export with resource/provenance validation. TG5 remains required for playable slowdown exports.
+Manual gate: launch the TG3 build, select a play, open Practice, build/rebuild a preview, try cancel and another play, compare sparse/modded cases, and resize/read explanations. No item is ACCEPTED. At TG3 completion TG4 was not started; its spacing/stat export is implemented in the record below. TG5 remains required for playable slowdown exports.
+
+## TG4 completion record — 2026-09-28
+
+**IMPLEMENTED; NEEDS USER TEST:** PracticePackageExporter, PracticeExportPaths and PracticeExportSelectionForm integrate with the existing Practice page/session. The preserving document gains metadata upserts; shared resource inspection supports unchanged storyboard resources. Source document reads are shared and bounded. No Toolkit source/runtime, FFmpeg, schema change or production scoring change was added.
+
+Exit coverage: selected multi-difficulty .osz output, nested/background bytes and title preservation, local IDs/unique difficulty names, provenance, original-file immutability, deterministic resource inclusion, collision refusal, cancellation/failure cleanup, source/resource freshness, path/junction containment and MainForm publish/open state. All 101 tests pass, including prior diagnosis/preview regressions. Real osu! import and media playback remain manual, not certified by synthetic asset tests.
+
+The intermediate UI explicitly exports only the chosen rate-1 subset. The current planner normally offers Reduced spacing alone; the service supports several spacing/stat variants without duplicating pipelines. Rate recipes remain preview-only and cannot be passed through the exporter. Unsupported resources fail the whole selected set rather than produce incomplete packages. Supported resource types and size/containment limits are in PRODUCT_SPEC.md.
+
+Next: **TG5 — Audio rendering and complete selected-map series**, NOT STARTED. Extend this one staged exporter with explicitly managed audio rendering, content/options deduplication and timestamp checks. Preserve the selected-subset/complete-series distinction until every requested rate recipe can be published. Pitch is already explicit; serialized stat/mod semantics remain the documented source-relative policy.

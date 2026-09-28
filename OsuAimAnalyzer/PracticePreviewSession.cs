@@ -33,14 +33,21 @@ public static class PracticePreviewSource
 
     public static async Task<BeatmapDocument> ReadVerifiedAsync(PracticeSourceIdentity source, CancellationToken token = default)
     {
-        await using var stream = new FileStream(source.BeatmapPath, FileMode.Open, FileAccess.Read, FileShare.Read,
-            65536, FileOptions.Asynchronous | FileOptions.SequentialScan);
-        if (stream.Length > MaximumBytes) throw new NotSupportedException("Preview is limited to beatmaps up to 16 MiB.");
-        var bytes = new byte[(int)stream.Length];
-        await stream.ReadExactlyAsync(bytes, token).ConfigureAwait(false);
-        token.ThrowIfCancellationRequested();
+        byte[] bytes = await ReadBytesAsync(source.BeatmapPath, token).ConfigureAwait(false);
         if (!Convert.ToHexString(MD5.HashData(bytes)).Equals(source.BeatmapHash, StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("The .osu file has changed since this play was analyzed. Restore the matching version or analyze a replay for the current version.");
         return BeatmapDocument.FromBytes(bytes);
+    }
+
+    internal static async Task<byte[]> ReadBytesAsync(string path, CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested();
+        await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read,
+            65536, FileOptions.Asynchronous | FileOptions.SequentialScan);
+        if (stream.Length > MaximumBytes) throw new NotSupportedException("Beatmap and storyboard documents are limited to 16 MiB.");
+        var bytes = new byte[(int)stream.Length];
+        await stream.ReadExactlyAsync(bytes, token).ConfigureAwait(false);
+        token.ThrowIfCancellationRequested();
+        return bytes;
     }
 }

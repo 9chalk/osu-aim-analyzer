@@ -13,7 +13,7 @@ public sealed class BeatmapResources
         Issues = Array.AsReadOnly(issues.Distinct().ToArray());
     }
 
-    public static BeatmapResources Inspect(BeatmapDocument document)
+    public static BeatmapResources Inspect(BeatmapDocument document, bool includeStoryboards = false)
     {
         var files = new List<BeatmapResource>();
         var issues = new List<string>();
@@ -31,7 +31,10 @@ public sealed class BeatmapResources
             try
             {
                 string text = line.Text.Trim();
-                if (line.Section == "General" && text.StartsWith("AudioFilename:", StringComparison.Ordinal)) Add(text[(text.IndexOf(':') + 1)..], "audio");
+                if (includeStoryboards && (line.Section == "Variables" || text.Contains('$')))
+                    issues.Add("Storyboard variables are not supported for export.");
+                int colon = text.IndexOf(':');
+                if (line.Section == "General" && colon > 0 && text[..colon].Trim() == "AudioFilename") Add(text[(colon + 1)..], "audio");
                 if (line.Section == "Events")
                 {
                     var p = BeatmapDocument.Csv(text);
@@ -45,9 +48,22 @@ public sealed class BeatmapResources
                             Add(p[3], "sample"); break;
                         case "Sprite": case "4":
                             if (p.Length < 4) throw new FormatException("Missing sprite filename.");
-                            Add(p[3], "storyboard"); issues.Add("Storyboard requires export/retiming policy."); break;
+                            Add(p[3], "storyboard");
+                            if (!includeStoryboards) issues.Add("Storyboard requires export/retiming policy.");
+                            break;
+                        case "Animation": case "6":
+                            if (!includeStoryboards || p.Length < 8 || !int.TryParse(p[6], out int frames) || frames < 1 || frames > 10000)
+                                throw new FormatException("Unsupported storyboard animation.");
+                            string framePath = p[3].Trim().Trim('"');
+                            string extension = Path.GetExtension(framePath);
+                            if (extension.Length == 0) throw new FormatException("Animation needs a file extension.");
+                            for (int frame = 0; frame < frames; frame++) Add(framePath[..^extension.Length] + frame + extension, "storyboard");
+                            break;
                         case "2": case "Break": break;
-                        default: issues.Add("Unsupported event or storyboard command; resource manifest may be incomplete."); break;
+                        default:
+                            if (!includeStoryboards || p[0].TrimStart(' ', '_', '\t') is not ("F" or "M" or "MX" or "MY" or "S" or "V" or "R" or "C" or "P" or "L" or "T"))
+                                issues.Add("Unsupported event or storyboard command; resource manifest may be incomplete.");
+                            break;
                     }
                 }
                 if (line.Section == "HitObjects")
@@ -66,7 +82,7 @@ public sealed class BeatmapResources
             catch (FormatException e) { issues.Add(e.Message); }
         }
         // Named files cannot enumerate sample-set/index fallback assets or external .osb files.
-        issues.Add("Exporter must resolve implicit sample-set/index hitsounds and check external .osb files separately.");
+        if (!includeStoryboards) issues.Add("Exporter must resolve implicit sample-set/index hitsounds and check external .osb files separately.");
         return new(files, issues);
     }
 }

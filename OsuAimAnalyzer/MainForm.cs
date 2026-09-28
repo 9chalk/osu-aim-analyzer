@@ -210,10 +210,11 @@ public sealed class MainForm : Form
         ConfigureGrid();
         WireEvents();
         playInspectorPractice.PreviewRequested += async policy => await BuildPracticePreviewAsync(policy);
+        playInspectorPractice.ExportRequested += async series => await ExportPracticeAsync(series);
         playInspectorPractice.CancelRequested += () =>
         {
             practicePreviewSession.Cancel();
-            playInspectorPractice.ShowMessage("Preview canceled. Build preview to try again.");
+            playInspectorPractice.ShowMessage("Cancellation requested. Build preview to try again. Any package already published is retained at your chosen destination.");
         };
         Disposed += (_, _) => practicePreviewSession.Dispose();
         Shown += async (_, _) => await InitializeAsync();
@@ -2632,7 +2633,7 @@ public sealed class MainForm : Form
         playInspectorPractice.SetBusy(true);
         try
         {
-            string text = await Task.Run(async () =>
+            var built = await Task.Run(async () =>
             {
                 var play = database.LoadPlay(request.PlayId) ?? throw new InvalidOperationException("The selected play is no longer available.");
                 request.Token.ThrowIfCancellationRequested();
@@ -2648,10 +2649,10 @@ public sealed class MainForm : Form
                 // Source may have changed while diagnosis/transforms ran. Revalidate before presenting it.
                 await PracticePreviewSource.ReadVerifiedAsync(source, request.Token);
                 request.Token.ThrowIfCancellationRequested();
-                return PracticePreviewControl.FormatPreview(result);
+                return (Result: result, Text: PracticePreviewControl.FormatPreview(result));
             }, request.Token);
             if (!IsDisposed && practicePreviewSession.IsCurrent(request, inspectorPlayId))
-                playInspectorPractice.ShowMessage(text);
+                playInspectorPractice.ShowPreview(built.Result, built.Text);
         }
         catch (OperationCanceledException) { }
         catch (Exception ex)
@@ -2659,6 +2660,55 @@ public sealed class MainForm : Form
             if (!IsDisposed && practicePreviewSession.IsCurrent(request, inspectorPlayId))
                 playInspectorPractice.ShowMessage("Could not build practice preview.\r\n" + ex.Message + "\r\n\r\nNo source files were changed. You can retry after correcting the problem.");
         }
+    }
+
+    private async Task ExportPracticeAsync(PracticeSeriesPreview series)
+    {
+        if (series.Source.SelectedPlayId != inspectorPlayId) return;
+        using var selection = new PracticeExportSelectionForm(series);
+        if (selection.ShowDialog(this) != DialogResult.OK) return;
+        var chosen = selection.SelectedVariants;
+        using var save = new SaveFileDialog
+        {
+            Title = $"Save {chosen.Count} spacing/stat practice map(s)", Filter = "osu! beatmap package (*.osz)|*.osz",
+            FileName = $"Aim practice {DateTime.Now:yyyy-MM-dd HH-mm-ss}-{Guid.NewGuid().ToString("N")[..6]}.osz",
+            AddExtension = true, DefaultExt = "osz", OverwritePrompt = false,
+            InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
+        };
+        if (save.ShowDialog(this) != DialogResult.OK || series.Source.SelectedPlayId != inspectorPlayId) return;
+        await ExportPracticeToPathAsync(series, chosen, save.FileName);
+    }
+
+    private async Task ExportPracticeToPathAsync(PracticeSeriesPreview series, IReadOnlyList<PracticeVariant> selected, string destination)
+    {
+        if (series.Source.SelectedPlayId != inspectorPlayId || !inspectorPlayId.HasValue) return;
+        var request = practicePreviewSession.Begin(inspectorPlayId.Value);
+        playInspectorPractice.SetBusy(true);
+        playInspectorPractice.ShowProgress("Validating resources and creating a new package…");
+        string songsDirectory = settings.SongsDirectory;
+        bool exporting = true;
+        var progress = new Progress<string>(message =>
+        {
+            if (exporting && !IsDisposed && practicePreviewSession.IsCurrent(request, inspectorPlayId)) playInspectorPractice.ShowProgress(message);
+        });
+        try
+        {
+            var package = await Task.Run(() => PracticePackageExporter.ExportAsync(series.Source, selected, destination,
+                new[] { songsDirectory }, progress, request.Token), request.Token);
+            exporting = false;
+            if (!IsDisposed)
+            {
+                SetStatus("Practice package saved: " + package.PackagePath);
+                if (practicePreviewSession.IsCurrent(request, inspectorPlayId)) playInspectorPractice.ShowPublished(package);
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            if (!IsDisposed && practicePreviewSession.IsCurrent(request, inspectorPlayId))
+                playInspectorPractice.ShowMessage("Export failed.\r\n" + ex.Message + "\r\n\r\nOriginal files were not changed. Rebuild the preview to retry.");
+        }
+        finally { exporting = false; }
     }
 
     private void RefreshInspectorHistory(PlayRow play, IReadOnlyList<PlayRow> all)
