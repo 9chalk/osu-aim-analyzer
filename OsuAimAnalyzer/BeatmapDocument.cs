@@ -53,6 +53,18 @@ public sealed class BeatmapDocument
     internal BeatmapDocument Replace(IReadOnlyDictionary<int, string> replacements)
         => new(Lines.Select((l, i) => replacements.TryGetValue(i, out var text) ? l with { Text = text } : l), encoding, preamble);
 
+    // Practice packages keep gameplay/backgrounds, never optional video or storyboard media.
+    // Filter before transforming and discovering resources; the original document remains untouched.
+    internal BeatmapDocument WithoutOptionalMedia()
+        => new(Lines.Where(line =>
+        {
+            if (line.Section == "Variables") return false;
+            if (line.Section != "Events" || !IsContent(line)) return true;
+            string kind = line.Text.Split(',', 2)[0].Trim().TrimStart(' ', '_', '\t');
+            return kind is not ("1" or "Video" or "3" or "Colour" or "4" or "Sprite" or "5" or "Sample" or "6" or "Animation"
+                or "F" or "M" or "MX" or "MY" or "S" or "V" or "R" or "C" or "P" or "L" or "T");
+        }), encoding, preamble);
+
     internal BeatmapDocument WithMetadata(IReadOnlyDictionary<string, string> values)
         => WithSectionValues("Metadata", values);
 

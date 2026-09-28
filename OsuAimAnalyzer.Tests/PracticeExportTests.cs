@@ -93,25 +93,25 @@ public sealed class PracticeExportTests : IDisposable
     }
 
     [Fact]
-    public async Task Export_PreservesStoryboardAssetsAndAnimationFrames()
+    public async Task Export_OmitsExternalStoryboardAssetsAndAnimationFrames()
     {
         WriteAsset("story/sprite.png"); WriteAsset("story/frame0.png"); WriteAsset("story/frame1.png");
         string storyboard = "[Events]\nSprite,Background,Centre,\"story/sprite.png\",0,0\n F,0,0,100,0,1\nAnimation,Foreground,Centre,\"story/frame.png\",0,0,2,100,LoopForever\n";
         File.WriteAllText(Path.Combine(Mapset, "original.osb"), storyboard);
         await Export();
         using var zip = ZipFile.OpenRead(Destination);
-        Assert.NotNull(zip.GetEntry("story/frame0.png")); Assert.NotNull(zip.GetEntry("story/frame1.png"));
-        using var reader = new StreamReader(zip.GetEntry("original.osb")!.Open());
-        Assert.Equal(storyboard, await reader.ReadToEndAsync());
+        Assert.Null(zip.GetEntry("story/frame0.png")); Assert.Null(zip.GetEntry("story/frame1.png"));
+        Assert.Null(zip.GetEntry("original.osb")); Assert.Null(zip.GetEntry("story/sprite.png"));
+        Assert.Equal(storyboard, File.ReadAllText(Path.Combine(Mapset, "original.osb")));
     }
 
     [Fact]
-    public async Task Export_UnsupportedStoryboardOrMissingAssetPublishesNothing()
+    public async Task Export_IgnoresUnsupportedStoryboardButRequiresGameplayAssets()
     {
         File.WriteAllText(Path.Combine(Mapset, "original.osb"), "[Variables]\n$asset=story/sprite.png\n[Events]\nSprite,Background,Centre,\"$asset\",0,0");
-        await Assert.ThrowsAsync<NotSupportedException>(() => Export());
-        AssertNoPackageOrStaging();
-        File.Delete(Path.Combine(Mapset, "original.osb"));
+        await Export();
+        using (var zip = ZipFile.OpenRead(Destination)) Assert.Null(zip.GetEntry("original.osb"));
+        File.Delete(Destination);
         File.Delete(Path.Combine(Mapset, "audio/song.mp3"));
         await Assert.ThrowsAnyAsync<IOException>(() => Export());
         AssertNoPackageOrStaging();

@@ -4,7 +4,7 @@
 
 TG5 — Audio rendering and complete selected-map series: **IMPLEMENTED; NEEDS USER TEST**. No item is ACCEPTED. TG6 remains deferred.
 Branch: feature/toolkit-integration. Master baseline remains adc29a1.
-The user confirmed the spacing compatibility follow-up works and requested continued development.
+The user confirmed TG5 works and requested that practice exports omit all video/storyboard media to avoid unnecessary Songs-folder growth. This omission follow-up is IMPLEMENTED; NEEDS USER TEST.
 
 ## Delivered
 
@@ -16,7 +16,7 @@ One shared staged exporter now renders deduplicated audio through a pinned FFmpe
 
 - Restore and Debug build: succeeded.
 - Release tests: 120 passed, zero failed/skipped; 15 added since the spacing build.
-- Windows x64 self-contained publish: OsuAimAnalyzer/bin/Release/net8.0-windows/win-x64/publish-tg5/.
+- Windows x64 self-contained publish: OsuAimAnalyzer/bin/Release/net8.0-windows/win-x64/publish-practice-lite/.
 - Existing WFAC010 high-DPI warning remains.
 - Reference hash comparison: zero changes; no reference files tracked. Master baseline remains adc29a1. Published audio tools match the verified local installation.
 - Native tests cover pitch/frequency, duration/timestamp bursts, MP3/Ogg input, running-process cancellation, full-series/MainForm export, audio sharing and pitch separation, source mutation and cleanup. Existing diagnosis snapshots pass unchanged.
@@ -24,7 +24,7 @@ One shared staged exporter now renders deduplicated audio through a pinned FFmpe
 
 ## Manual checks
 
-1. Close the prior app, then launch publish-tg5/OsuAimAnalyzer.exe. Keep the tools subfolder alongside it.
+1. Close the prior app, then launch publish-practice-lite/OsuAimAnalyzer.exe. Keep the tools subfolder alongside it.
 2. In Recent Play → Practice, Build preview and Export practice maps…. Leave the supported variants checked; save a new .osz outside Songs.
 3. Open package to import in osu!stable. Check the generated difficulties form a separate practice mapset with the original title/background and that the original map still plays unchanged.
 4. Play mild/strong slowdown and combined spacing without adding DT/HT. Check audio synchronization at the start, middle and end. Preserve pitch should retain the song's pitch.
@@ -32,7 +32,7 @@ One shared staged exporter now renders deduplicated audio through a pinned FFmpe
 
 ## Limits and next action
 
-Rate export supports MP3/Ogg/WAV and produces larger PCM WAV assets. External .osb files and unsupported embedded video/storyboard content block rate export explicitly; select spacing/stat only for those maps. Missing audio tools likewise leave spacing/stat export available. No automatic source rewriting or media omission occurs.
+Rate export supports MP3/Ogg/WAV and produces larger PCM WAV assets. Video/storyboard events, variables, storyboard samples and external .osb files are omitted before practice transforms/resource discovery. Their assets are never copied. Song audio, the map background, breaks and gameplay hitsounds are retained. This also removes optional-media blockers from slowdown export. Missing audio tools likewise leave spacing/stat export available. Source maps and already-exported packages are not modified.
 
 Documents are capped at 16 MiB, assets at 256 MiB, resources at 1 GiB total and 20,000 entries; audio has a 30-minute duration ceiling and ten-minute process timeout. Existing reparse-path restrictions remain. Rechecks address normal editing races, not hostile concurrent filesystem changes. Cancellation after atomic publication retains the completed artifact.
 

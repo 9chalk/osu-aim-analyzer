@@ -208,3 +208,10 @@ Automated gate: restore, Debug build, 120 Release tests and self-contained Windo
 Manual gate: launch publish-tg5/OsuAimAnalyzer.exe; rebuild the selected play's preview; export all supported variants; import the saved .osz explicitly; compare mild/strong slowdown, combined spacing and both pitch policies in osu!stable without added DT/HT. Check start/middle/end timing, title/background, separate generated identities and original map behavior. Test cancellation and save collisions. No item is ACCEPTED.
 
 **Next action:** user test TG5. TG6 (broader diagnostics generation, AIM-017) remains deferred pending scope decisions; do not begin it automatically.
+
+
+## User-directed scope reduction — omit optional media
+
+IMPLEMENTED; NEEDS USER TEST. TG5 feedback removes video/storyboard preservation and retiming from future work. BeatmapDocument.WithoutOptionalMedia is shared by the planner/exporter; originals are still hash-verified before deriving the practice document. External .osb discovery/copy and its rate blocker are removed from the production exporter. No new media pipeline, storage or Songs cleanup is added.
+
+The 120-test suite now verifies omission for both spacing-only and full slowdown series, including broken/missing storyboard assets, with background/hitsound/source preservation. Test build: publish-practice-lite/OsuAimAnalyzer.exe. Manually export a map with video/storyboard content; confirm the background and gameplay sounds remain, optional visuals are absent and slowdown audio stays synchronized. TG6 is not started.

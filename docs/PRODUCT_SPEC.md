@@ -2,7 +2,7 @@
 
 ## Current delivery status
 
-TG5 is **IMPLEMENTED; NEEDS USER TEST**. Practice can export selected slowdown and spacing variants with rendered audio. No item is ACCEPTED. The dated batch records below describe what was available at each stage; TG5 supersedes the earlier audio/export deferrals. TG6 remains deferred.
+TG5 is **IMPLEMENTED; NEEDS USER TEST**. Practice can export selected slowdown and spacing variants with rendered audio. Following user feedback, generated practice maps omit videos, storyboards and their assets while preserving the background and gameplay audio. No item is ACCEPTED. The dated batch records below describe what was available at each stage; TG5 supersedes the earlier audio/export deferrals. TG6 remains deferred.
 
 ## Source and scope
 
@@ -241,3 +241,12 @@ PracticeAudioRenderer runs the pinned FFmpeg distribution described in AUDIO_RUN
 Renderer failures/cancellation clean owned audio/ZIP staging before publication. Missing tools still allow spacing/stat export; the dialog explicitly counts unavailable rate variants. Rate export rejects external .osb files and unsupported embedded video/storyboard content rather than publishing unsynchronized content. Source and output duration are limited to 30 minutes, further constrained by 256 MiB per asset and 1 GiB total resources. WAV output can make packages much larger than the original compressed song.
 
 Verification: 120 native tests pass, including real synthetic audio frequency/timing, MP3/Ogg decoding, live cancellation, full-series/MainForm export, audio sharing and pitch separation, resource mutation and failure cleanup. Original diagnosis snapshots remain unchanged. The user confirmed the spacing follow-up works. Actual osu! import, synchronization and listening quality for TG5 remain NEEDS USER TEST.
+
+
+## Optional-media omission follow-up — 2026-09-28
+
+**IMPLEMENTED; NEEDS USER TEST:** the user confirmed TG5 works and explicitly removed video/storyboard support from scope to limit package/Songs-folder bloat. This supersedes earlier storyboard-preservation and rate-blocker policies, including AIM-016's resource handling; preserving the map background/title remains required.
+
+Practice documents omit video, sprites, animations, storyboard commands/variables and storyboard sound effects before planning/transformation. Export uses the identical policy and does not inspect/include external .osb files or their referenced assets. Missing or unsupported optional visuals no longer block generation. Background images, song audio, breaks, object hitsounds and conventional gameplay sample banks remain. Unrecognized non-optional content still receives normal validation. Original maps and existing packages are untouched; no cleanup of the user's Songs folder is performed.
+
+All 120 tests pass with updated regressions for complete series generation despite absent optional assets, archive omission, background/hitsound retention and original-file preservation. No item is ACCEPTED; TG6 remains deferred.

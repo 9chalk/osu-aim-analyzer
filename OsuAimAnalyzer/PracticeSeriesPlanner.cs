@@ -29,6 +29,7 @@ public static class PracticeSeriesPlanner
         if (source.SelectedPlayId != evidencePlayId) throw new ArgumentException("Diagnosis belongs to a different selected play.");
         if (!Convert.ToHexString(MD5.HashData(document.ToBytes())).Equals(source.BeatmapHash, StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("Source content no longer matches the selected replay's beatmap hash.");
+        document = document.WithoutOptionalMedia();
         var map = BeatmapParser.ParseDocument(document);
         if (map.Mode != 0 || map.HitObjects.Count == 0) throw new NotSupportedException("Preview requires a nonempty osu!standard map.");
         var difficulty = new SerializedDifficulty(map.HP, map.CS, map.AR, map.OD);
@@ -36,6 +37,7 @@ public static class PracticeSeriesPlanner
         var notes = new List<string>
         {
             "Preview only: no files or audio are generated. Suggestions are associations, not proof of improvement.",
+            "Practice exports omit videos, storyboards and storyboard sound effects. The map background, song audio and gameplay hitsounds are retained.",
             "Rates and stats are relative to the unmodded source. Played mods are context only; none are baked in.",
             "Serialized AR/OD stay unchanged except the explicitly labeled AR recipe. Timing changes do not apply DT/HT preempt or hit-window scaling.",
             "HP, CS and OD remain unchanged. No OD-specific evidence is currently available."

@@ -75,3 +75,10 @@ PracticeAudioRenderer implements IPracticeAudioRenderer as an isolated, cancella
 PracticePackageExporter remains the sole publication owner. It snapshots source audio under its existing resource size limit, hashes that content, caches rate/pitch/pipeline render jobs within the export, and assigns unique generated WAV entries. BeatmapDocument.WithSectionValues generalizes the existing preserving metadata updater for General.AudioFilename; it does not replace the analysis parser. Source hashes are compared again before atomic publication. Temporary audio and ZIP files are owned by the export request and removed on failure/cancellation.
 
 Provenance schema 2 adds rendered-audio records and hashes, without any SQLite migration. PracticeExportSelectionForm lists supported selected variants; absent binaries explicitly exclude rate variants. MainForm continues using PracticePreviewSession and off-thread work with stale-result/progress guards. External .osb retiming remains unsupported, so selecting any rate variant in such a mapset fails the entire selected export with a reason. No silent partial package is published.
+
+
+## Practice media policy (supersedes TG4/TG5 optional visuals)
+
+User feedback explicitly excludes videos and storyboards. BeatmapDocument.WithoutOptionalMedia creates a preserving derived document without known video/storyboard events, commands, variables or storyboard samples. PracticeSeriesPlanner applies it after verifying original identity; PracticePackageExporter applies the same policy before transforms, preview equivalence and resource discovery. Pure BeatmapTransforms retains its strict general-purpose retiming behavior.
+
+The exporter no longer opens/discovers external .osb files. Only retained background/song/gameplay-hit references and conventional gameplay sample banks are packaged. Optional visual assets cannot contribute to package size or block rate exports. Original documents, assets and previously imported packages are never edited or deleted.

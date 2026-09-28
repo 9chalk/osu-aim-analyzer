@@ -85,13 +85,13 @@ public class PracticePlannerTests
     }
 
     [Fact]
-    public void Planner_UnsupportedRetimingStillShowsIndependentSpacingRecipe()
+    public void Planner_OmitsVideoBeforePlanningAllRecipes()
     {
         var document = BeatmapDocument.Parse(BeatmapDocumentTests.Map.Replace("2,1000,2000", "Video,0,\"movie.mp4\""));
         var result = PracticeSeriesPlanner.Plan(Identity(document), document, 1, Strong, PracticePitchPolicy.PreservePitch);
-        Assert.Single(result.Variants);
-        Assert.Equal("Reduced spacing", result.Variants[0].Name);
-        Assert.Contains(result.Notes, n => n.Contains("Video needs"));
+        Assert.Equal(5, result.Variants.Count);
+        Assert.All(result.Variants, v => Assert.DoesNotContain("movie.mp4", v.Preview.Document.ToString()));
+        Assert.Contains(result.Notes, n => n.Contains("omit videos"));
     }
 
     [Fact]

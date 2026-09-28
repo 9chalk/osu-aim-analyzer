@@ -153,12 +153,28 @@ public sealed class PracticeAudioTests : IDisposable
     }
 
     [Fact]
-    public async Task Export_RateWithExternalStoryboardFailsWithoutPublishingPartialSubset()
+    public async Task Export_OmitsAllOptionalMediaAndRetainsGameplayForFullSeries()
     {
-        var (source, preview) = CreateMap();
-        File.WriteAllText(Path.Combine(Path.GetDirectoryName(source.BeatmapPath)!, "story.osb"), "[Events]\n");
-        await Assert.ThrowsAsync<NotSupportedException>(() => PracticePackageExporter.ExportAsync(source, preview.Variants, Path.Combine(root, "bad.osz")));
-        AssertNoStaging();
+        var (source, preview) = CreateMap(optionalMedia: true);
+        string mapset = Path.GetDirectoryName(source.BeatmapPath)!;
+        string storyboard = "[Variables]\n$asset=missing.png\n[Events]\nSprite,Background,Centre,\"$asset\",0,0";
+        File.WriteAllText(Path.Combine(mapset, "story.osb"), storyboard);
+        var originals = Directory.EnumerateFiles(mapset, "*", SearchOption.AllDirectories).ToDictionary(p => p, File.ReadAllBytes);
+        string package = Path.Combine(root, "clean.osz");
+        var result = await PracticePackageExporter.ExportAsync(source, preview.Variants, package);
+        Assert.Equal(4, result.DifficultyEntries.Count);
+        using var zip = ZipFile.OpenRead(package);
+        Assert.Null(zip.GetEntry("story.osb")); Assert.Null(zip.GetEntry("sounds/click.wav"));
+        Assert.NotNull(zip.GetEntry("images/bg,wide.jpg")); Assert.NotNull(zip.GetEntry("sounds/hit.wav"));
+        foreach (string entry in result.DifficultyEntries)
+        {
+            using var reader = new StreamReader(zip.GetEntry(entry)!.Open());
+            string generated = await reader.ReadToEndAsync();
+            foreach (string omitted in new[] { "movie.mp4", "missing.png", "Sprite,", "Animation,", "_F,", "[Variables]", "Sample," }) Assert.DoesNotContain(omitted, generated);
+            Assert.Contains("images/bg,wide.jpg", generated);
+            Assert.Contains("sounds/hit.wav", generated);
+        }
+        foreach (var original in originals) Assert.Equal(original.Value, File.ReadAllBytes(original.Key));
     }
 
     [Theory]
@@ -179,10 +195,12 @@ public sealed class PracticeAudioTests : IDisposable
         Assert.Empty(Directory.EnumerateDirectories(root, ".aim-audio-*"));
     }
 
-    internal (PracticeSourceIdentity, PracticeSeriesPreview) CreateMap()
+    internal (PracticeSourceIdentity, PracticeSeriesPreview) CreateMap(bool optionalMedia = false)
     {
         string mapset = Path.Combine(root, "source"); Directory.CreateDirectory(mapset);
-        var document = BeatmapDocument.Parse(BeatmapDocumentTests.Map.Replace("audio/song.mp3", "song.wav"));
+        string text = BeatmapDocumentTests.Map.Replace("audio/song.mp3", "song.wav");
+        if (optionalMedia) text = text.Replace("[Events]", "[Events]\nVideo,0,\"movie.mp4\"\nSprite,Background,Centre,\"missing.png\",0,0\n_F,0,0,100,0,1\nAnimation,Foreground,Centre,\"frames.png\",0,0,2,100,LoopForever") + "\n[Variables]\n$asset=missing.png\n";
+        var document = BeatmapDocument.Parse(text);
         var source = PracticePlannerTests.Identity(document, path: Path.Combine(mapset, "source.osu"));
         File.WriteAllBytes(source.BeatmapPath, document.ToBytes());
         WriteWave(Path.Combine(mapset, "song.wav"), 8, t => .3 * Math.Sin(2 * Math.PI * 440 * t));

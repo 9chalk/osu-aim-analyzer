@@ -25,11 +25,11 @@ public static class PracticePackageExporter
         destination = PracticeExportPaths.Destination(destination, root, forbidden);
         PracticeExportPaths.CheckNoLinks(source.BeatmapPath);
         var original = await PracticePreviewSource.ReadVerifiedAsync(source, token);
-        var resources = BeatmapResources.Inspect(original, includeStoryboards: true);
+        var practiceSource = original.WithoutOptionalMedia();
+        var resources = BeatmapResources.Inspect(practiceSource, includeStoryboards: true);
         Validate(resources);
         if (resources.Files.Count(r => r.Kind == "audio") != 1) throw new NotSupportedException("Export requires one explicit AudioFilename.");
         var assets = resources.Files.Select(r => r.RelativePath).ToList();
-        var inspectedStoryboards = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var discoveredFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         // Preserve local sample-bank fallback without guessing slider edge/tick sample selection.
         // Only named banks are included, never unrelated difficulties or arbitrary mapset files.
@@ -37,25 +37,13 @@ public static class PracticePackageExporter
         {
             token.ThrowIfCancellationRequested();
             if (SampleBank.IsMatch(Path.GetFileName(file))) { assets.Add(Path.GetFileName(file)); discoveredFiles.Add(Path.GetFileName(file)); }
-            if (!Path.GetExtension(file).Equals(".osb", StringComparison.OrdinalIgnoreCase)) continue;
-            PracticeExportPaths.CheckNoLinks(file);
-            byte[] storyboardBytes = await PracticePreviewSource.ReadBytesAsync(file, token);
-            var storyboard = BeatmapDocument.FromBytes(storyboardBytes);
-            inspectedStoryboards.Add(Path.GetFileName(file), Hash(storyboardBytes));
-            discoveredFiles.Add(Path.GetFileName(file));
-            var storyboardResources = BeatmapResources.Inspect(storyboard, includeStoryboards: true);
-            Validate(storyboardResources);
-            assets.Add(Path.GetFileName(file));
-            assets.AddRange(storyboardResources.Files.Select(r => r.RelativePath));
         }
-        if (needsAudio && inspectedStoryboards.Count > 0)
-            throw new NotSupportedException("Rate export cannot retime external storyboards. Select spacing/stat variants only for this mapset.");
         var assetPaths = new SortedDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (string asset in assets)
         {
             string entry = asset.Replace('\\', '/');
             string extension = Path.GetExtension(entry).ToLowerInvariant();
-            if (extension is not (".mp3" or ".ogg" or ".wav" or ".jpg" or ".jpeg" or ".png" or ".bmp" or ".gif" or ".mp4" or ".avi" or ".flv" or ".wmv" or ".m4v" or ".osb"))
+            if (extension is not (".mp3" or ".ogg" or ".wav" or ".jpg" or ".jpeg" or ".png" or ".bmp" or ".gif"))
                 throw new NotSupportedException("Unsupported asset type: " + entry);
             assetPaths[entry] = PracticeExportPaths.Resource(root, entry);
         }
@@ -101,11 +89,11 @@ public static class PracticePackageExporter
             {
                 var variant = selected[i];
                 if (variant.Name.Length > 100 || variant.Name.Any(char.IsControl)) throw new ArgumentException("Invalid variant name.");
-                var fresh = BeatmapTransforms.Apply(original, variant.Options, token);
-                if (!fresh.Document.ToBytes().SequenceEqual(variant.Preview.Document.ToBytes()))
+                var fresh = BeatmapTransforms.Apply(practiceSource, variant.Options, token);
+                if (!fresh.Document.ToBytes().SequenceEqual(variant.Preview.Document.WithoutOptionalMedia().ToBytes()))
                     throw new InvalidOperationException("Preview content does not match the source/options. Rebuild the preview.");
                 string transformedHash = Hash(fresh.Document.ToBytes());
-                if (transformedHash == Hash(original.ToBytes()) || !distinct.Add(transformedHash + (variant.Options.SourceClockRate == 1 ? "" : variant.Options.PitchPolicy.ToString()))) throw new ArgumentException("Unchanged or duplicate variants cannot be exported.");
+                if (transformedHash == Hash(practiceSource.ToBytes()) || !distinct.Add(transformedHash + (variant.Options.SourceClockRate == 1 ? "" : variant.Options.PitchPolicy.ToString()))) throw new ArgumentException("Unchanged or duplicate variants cannot be exported.");
                 string entry = $"practice-{id[..8]}-{i + 1:00}.osu";
                 var generated = fresh.Document.WithMetadata(new Dictionary<string, string>
                 {
@@ -154,8 +142,6 @@ public static class PracticePackageExporter
                         if (copiedResourceBytes > MaximumPackageBytes) throw new IOException("Resources grew beyond the 1 GiB package limit.");
                         await using var target = archive.CreateEntry(asset.Key, CompressionLevel.Optimal).Open();
                         checksums.Add(asset.Key, await CopyHashAsync(input, target, MaximumAssetBytes, token));
-                        if (inspectedStoryboards.TryGetValue(asset.Key, out string? expected) && checksums[asset.Key] != expected)
-                            throw new IOException("Storyboard changed after resource discovery: " + asset.Key);
                     }
                     if (sourceAudioHash is not null && checksums[sourceAudioEntry] != sourceAudioHash)
                         throw new IOException("Source audio changed during rendering. Rebuild and retry.");
@@ -176,7 +162,7 @@ public static class PracticePackageExporter
                         Title = sourceMap.Title, Variants = recipes,
                         RenderedAudio = renderedMetadata,
                         Resources = assetPaths.Keys.Concat(renderedFiles.Keys).Select(e => new { Entry = e, Sha256 = checksums[e] }).ToArray(),
-                        Policy = "Source-relative timing; explicit pitch; local sample banks retained; selected variants only."
+                        Policy = "Source-relative timing; explicit pitch; local sample banks retained; selected variants only; video, storyboards and storyboard sound effects omitted."
                     }, new JsonSerializerOptions { WriteIndented = true });
                     await WriteEntryAsync(archive, "aim-analyzer-provenance.json", manifest, checksums, token);
                 }
@@ -196,7 +182,7 @@ public static class PracticePackageExporter
             }
             await PracticePreviewSource.ReadVerifiedAsync(source, token);
             var currentDiscovered = Directory.EnumerateFiles(root).Select(Path.GetFileName)
-                .Where(name => name is not null && (SampleBank.IsMatch(name) || Path.GetExtension(name).Equals(".osb", StringComparison.OrdinalIgnoreCase)))
+                .Where(name => name is not null && SampleBank.IsMatch(name))
                 .Select(name => name!).ToHashSet(StringComparer.OrdinalIgnoreCase);
             if (!discoveredFiles.SetEquals(currentDiscovered)) throw new IOException("Mapset resources changed during export. Retry after editing has finished.");
             foreach (var asset in assetPaths)
