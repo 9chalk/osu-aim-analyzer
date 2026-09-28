@@ -28,3 +28,7 @@ No automated test framework or coverage threshold is configured. Build changes a
 ## Commit & Pull Request Guidelines
 
 The initial commit is `Baseline before agentic development`; no formal commit convention is established. Use concise, descriptive messages and focused commits. PRs should explain behavior changes, validation performed, and related issues; include screenshots for UI changes. Explicitly identify scoring or database compatibility changes. Preserve scoring/config presets and useful test fixtures; exclude generated output and personal replay history.
+
+## Reference Boundary
+
+Everything in reference/ is read-only comparison material, excluded from Git. Do not edit, run installers in, generate caches in, or copy source wholesale from that tree. Production code lives in OsuAimAnalyzer/. Use docs/TOOLKIT_V1_3_PORTING_AUDIT.md for reuse decisions. Toolkit integration work belongs on feature/toolkit-integration; preserve the master baseline. Planning does not authorize feature implementation.

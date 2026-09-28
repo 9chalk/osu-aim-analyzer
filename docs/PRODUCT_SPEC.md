@@ -2,11 +2,15 @@
 
 ## Source and scope
 
-Source: [osu aim analyzer stuff](https://docs.google.com/document/d/1vg8Xf5UHyvgA7PpsN0DMNJQv_QjLkTa8aduJHUdMCHY/edit), explicitly confirmed by the owner as the intended source despite the earlier title “osu! Aim Analyzer — Ideas, Features & Bugs.” The complete returned document contains one tab, **Tab 1** (`t.0`), headed “Functions and features ideas,” and ends “we did the stuff already above.” It contains no separate bug list. Read on 2026-09-28 UTC (2026-09-27 Pacific).
+Source: [osu aim analyzer stuff](https://docs.google.com/document/d/1vg8Xf5UHyvgA7PpsN0DMNJQv_QjLkTa8aduJHUdMCHY/edit), explicitly confirmed by the owner as the intended source despite the earlier title “osu! Aim Analyzer — Ideas, Features & Bugs.” The complete returned document contains one tab, **Tab 1** (`t.0`), headed “Functions and features ideas,” and ends “we did the stuff already above.” This describes the initial snapshot before the later New stuff section (see Updated source and integration scope). Read on 2026-09-28 UTC (2026-09-27 Pacific).
 
 Repository comparison: commit `231daed`, v32 source. Architecture references are `AGENTS.md`, `OsuAimAnalyzer/README.md`, and version notes, checked against code. No separate architecture document existed. These specifications do not change the Google Doc, application, scoring, or database.
 
 AIM IDs are permanent: keep them when reordering, append new IDs, and retain retired IDs with a replacement reference. AIM-001 through AIM-007 cover the source; AIM-008 is a separately identified review finding. “Implemented” means present and connected in source, not runtime-verified. No build, replay import, or UI test was performed for this planning task.
+
+## Updated source and integration scope
+
+The same owner-confirmed Google Doc was re-read in full on 2026-09-28 UTC. Its current title is **new osu aim analyzer stuff**, and its single tab now includes a **New stuff** section requesting supplemental training-map generation. The original snapshot description above is historical; the appended requirements below supersede its scope limitations. No Google Doc was edited. Baseline is `adc29a1`. See [ARCHITECTURE.md](ARCHITECTURE.md) and [TOOLKIT_V1_3_PORTING_AUDIT.md](TOOLKIT_V1_3_PORTING_AUDIT.md). AIM-001–AIM-008 remain stable; AIM-009–AIM-017 cover the new source requirements. No application implementation is included.
 
 ## Current architecture
 
@@ -107,8 +111,56 @@ The single `net8.0-windows` WinForms project keeps UI, parsing, analysis, and SQ
 - Assume existing directional labels must survive. Replacing them would conflict with both source context and the current two-dimensional design.
 - Assume the “detailed table window” is `AdvancedDiagnosticsForm` and the “analysis window” is Aim Analysis. These are the matching existing surfaces.
 - “All those metrics” means relevant available movement evidence, not a mandate to include every scalar or invent new telemetry. Exact shake-off timing, allowed skipped objects, minimum repetition count, and confidence calibration remain open requirements. Preserve current thresholds until reviewed.
-- No new scoring formula, training system, cloud service, UI framework, or database redesign is requested. A literal frame-verified shake-off feature would exceed today's summary-metric diagnostic contract and is deferred, not silently specified as approved work.
+- The original diagnostics section requests no new scoring formula or training generator. The later supplemental-map section below adds generation; it does not request cloud services, a new UI framework, or production scoring changes. A literal frame-verified shake-off feature would exceed today's summary-metric diagnostic contract and is deferred, not silently specified as approved work.
 
 ## Refactoring before further implementation
 
 First add characterization coverage around the pure diagnostic functions in a separate test project. Then make per-play versus historical aggregation explicit and carry play identity in derived streak results (AIM-008). Reuse the same diagnosis results across UI consumers where useful; do not rewrite the large `MainForm` wholesale. Keep rule changes separate from aggregation fixes so changed labels are attributable. Existing telemetry supports the initial work without a database migration.
+
+## Toolkit-derived supplemental training backlog
+
+All features below are unimplemented; existing supporting capabilities are called out explicitly. Python implementations are behavioral references, not drop-in C# modules. Strategy labels are DIRECT REUSE, ADAPT, REIMPLEMENT, ALREADY EXISTS, and CONSOLIDATE.
+
+### AIM-009 — Supplemental training for the selected map
+
+**Intent:** Generate supplemental maps from individual-map diagnosis to help improve the selected map. **Toolkit:** TrainerTab.generate, trainer_core.build_practice_osu/export_practice, SpacingTab.generate and spacing exports. **Strategy:** REIMPLEMENT orchestration; ADAPT transforms; CONSOLIDATE MainForm selected-play context, BeatmapResolver and AimTrainingDiagnosisEngine rather than introducing another history/selection system. **Dependencies:** AIM-010–AIM-016 and resolved source/resources. **Risk:** High; stale selection and original/generated identity confusion. **Tests:** Immutable selection snapshot, changed/missing source, cancellation and correct source hash. **Changes:** New planner/service and native UI; parser/export/storage through dependencies; no production scoring change or mandatory existing-history schema migration.
+
+### AIM-010 — Evidence-guided useful adjustments
+
+**Intent:** Use “what seems to improve” this type of map to choose useful demands, neither barely changed nor trivially easy. **Toolkit:** Rate/stat/spacing options execute adjustments but contain no learned recommendation system. **Strategy:** REIMPLEMENT variant selection; CONSOLIDATE AimTrainingDiagnosisEngine.BuildCategory/BuildRunDiagnosis, AimCategoryDiagnosis.Factors/Routes, LifetimeAimAnalysisBuilder, TrainingEngine and AnalyzerDatabase. Generalize structured run-level evidence; never parse BuildRunDiagnosis prose as an API. **Dependencies:** Comparable history, explicit target bands and low-evidence policy; AIM-008 if streaks inform decisions. **Risk:** High: controlled-range associations are not evidence that practice caused improvement. Initial proposals must state uncertainty. **Tests:** Sparse history, conflicting factors, deterministic bounded recommendations and unchanged scoring. **Changes:** Structured diagnosis/planner architecture and explanation UI. Current-history suggestions need no schema migration; longitudinal intervention/outcome learning requires separately specified storage and validation.
+
+### AIM-011 — Lower BPM with comparable spacing and selected difficulty reductions
+
+**Intent:** Lower BPM while retaining relevant spacing, optionally easing diagnosed AR/CS/OD/HP demands. **Toolkit:** trainer_core.build_practice_osu, scaled_ar/scaled_od, _retime_hitobject/_retime_timing/_retime_event/_retime_bookmarks and generate_audio. **Strategy:** ADAPT pure transformations; CONSOLIDATE ModUtils/AimAnalyzer time/radius helpers; REIMPLEMENT audio jobs and preserving-document writes. **Dependencies:** Preserving parser, explicit base/effective/generated-stat contract, AIM-010 and shared exporter. Scale variable-BPM timing segments rather than flattening them. **Risk:** High: double clock scaling, slider/SV timing, AR/OD compensation, rounding, pitch and unsupported storyboard timing. CS changes normalized spacing, so retain CS by default when spacing is the controlled variable. **Tests:** Multi-BPM, sliders/spinners, sentinels, rate 1.0, DT/NC/HT and source immutability. **Changes:** Parser, transformation/audio services, generated resources and preview UI; provenance manifest, no compulsory history-table change.
+
+### AIM-012 — Plain slowdown
+
+**Intent:** “Just plain slow down the map,” without unrelated geometry edits. Proposed default: serialized difficulty settings stay unchanged while timing/audio slow down, and effective AR/OD are shown. Pitch preservation is a proposal, not a source requirement. **Toolkit:** build_practice_osu, generate_audio and _atempo_chain. **Strategy:** ADAPT the same rate transform as AIM-011; CONSOLIDATE options/renderer, not another slowdown engine. **Dependencies:** Document/rate contract and export, but not a learned model. **Risk:** Medium/high audio/timing risk. **Tests:** Expected timestamps/duration, unchanged coordinates/stored stats, cancellation and missing audio. **Changes:** Same service/storage boundaries as AIM-011, distinct recipe/UI label. Deduplicate if AIM-011 proposes identical settings.
+
+### AIM-013 — Lower spacing with unchanged BPM
+
+**Intent:** Reduce spacing enough to be useful while retaining challenge and BPM. **Toolkit:** spacing_core.apply_pattern_transform, BeatmapDocument.transform, _build_layout, _find_closest_fitting_multiplier and TransformResult. **Strategy:** ADAPT geometry; CONSOLIDATE Analyzer normalization and recommendation evidence; use a preserving document rather than HitObjectData alone. **Dependencies:** AIM-010, geometry/document boundary and exporter. Preview achieved spacing and capped/repositioned groups. **Risk:** High: approximate slider exits, fallback shape distortion and playfield fitting. **Tests:** Unchanged times/BPM/audio, slider repeat parity/length, close jumps, bounds, repeated preview immutability and achieved reduction. **Changes:** Parser, geometry service, preview and generated-file storage; no initial schema migration. Flips are not requested.
+
+### AIM-014 — Approximately five complementary variants
+
+**Intent:** “Make like a total of 5 per selected map.” Target five distinct explained difficulties in one series; propose fewer with a reason if constraints/evidence cannot support five. **Toolkit:** Single-map generators exist, but no five-map planner. **Strategy:** REIMPLEMENT deterministic series planning; CONSOLIDATE shared options, diagnosis and source identity. **Dependencies:** AIM-010–AIM-013 and AIM-016; bounded recipe definitions. **Risk:** Medium/high: inventing unjustified recipes, duplicate options/audio and partial publication. **Tests:** Unique recipes, stable ordering, sparse evidence, count explanation and all-or-nothing publication of the selected set. **Changes:** Planner, series preview and versioned provenance manifest. Exact count and remaining recipe choices remain open; no database migration required for initial export provenance.
+
+### AIM-015 — Recent Play generation tab
+
+**Intent:** Put the workflow in Dashboard Recent Play. Show variants/reasons, explicit generation, progress/errors and a finished-package opening action. **Toolkit:** TrainerTab/SpacingTab worker/debounce concepts, not Tk widgets. **Strategy:** REIMPLEMENT native page with MainForm.playInspectorPages, ToolkitUi and Theme; CONSOLIDATE existing selected-play state. Existing Training prose is ALREADY EXISTS support, not a generator. **Dependencies:** Planner, preview and exporter. **Risk:** Medium: stale selection, UI blocking, retry/cancel lifecycle. **Tests:** Empty states, rapid selection, layout, progress, cleanup and import handoff. **Changes:** UI/job coordination; no independent schema. Do not auto-generate or replace the inspected replay's map with the foreground osu! selection.
+
+### AIM-016 — Separate mapset retaining song title and background
+
+**Intent:** Put the new maps in a separate mapset with identical visible song name and background image. **Toolkit:** spacing_core.generate_new_mapset_package, trainer_core.export_practice/_find_background and merger export collision concepts. **Strategy:** REIMPLEMENT staged multi-difficulty export; ADAPT resource/CSV handling; CONSOLIDATE BeatmapResolver invalidation and AppSettings. BackgroundPath parsing partly ALREADY EXISTS. **Dependencies:** AIM-014, preserving document, resource manifest and optional audio renderer. **Risk:** High: reused original IDs, name collisions, nested media, deleted temporary paths and unrelated source difficulties. Do not copy Toolkit's title suffix or package contents blindly. **Tests:** Same title/background bytes, new local identities, only planned difficulties, nested assets, repeat exports, integrity and failure cleanup. **Changes:** Parser, exporter, resource/provenance storage and native open action. No writes into the original set; existing-mapset exports are out of scope. Schema changes conditional on future outcome queries, not initial packaging.
+
+### AIM-017 — Broader diagnostics generation later
+
+**Intent:** A more general version later in the diagnostics tab, with greater scope. **Toolkit:** Same trainer/spacing primitives; no diagnosis-wide planner. **Strategy:** REIMPLEMENT later orchestration; CONSOLIDATE AimTrainingDiagnosisEngine, Aim Analysis context and AIM-009–AIM-016 services. **Dependencies:** Proven selected-map workflow; define categories, candidate-map selection, output count and exact diagnostics surface. **Risk:** High scope uncertainty. **Tests:** Future multi-map provenance isolation, bounded batch size and cancellation. **Changes:** Likely UI/orchestration; schema/storage TBD. Explicitly deferred; do not infer downloading, merger or automatic longitudinal learning.
+
+## Coverage, consolidation and product decisions
+
+AIM-001–AIM-008 remain ALREADY EXISTS/native correctness work. Toolkit has no replacement replay-diagnosis engine. AIM-009–AIM-017 cover all new source obligations; “etc” is an extension marker, not a hidden requirement. DIRECT REUSE applies to existing production memory_reader.ps1/setup_native.ps1, already byte-identical to Toolkit; retain them without duplication.
+
+Generalize one settings/path owner, resolver/hash index, selected-play context, time/mod model, structured diagnosis API, preview-job lifecycle, document adapter and exporter. No parallel database or Toolkit application shell. Merger, flips, random backgrounds and original-mapset writes are audit opportunities, not this backlog's requested features.
+
+Open choices: exact five versus approximate target; useful recipe/target bands; pitch and stat-compensation defaults; base map versus baked played mods; low-evidence behavior; and the later diagnostics scope. Preserve original song/background; use difficulty names and fresh generated identities for distinction. Label suggestions as association-based until actual improvement outcomes are defined. Existing stored diagnoses and scores must not change merely because generation is added.

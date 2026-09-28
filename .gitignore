@@ -30,3 +30,7 @@ BenchmarkDotNet.Artifacts/
 .DS_Store
 Thumbs.db
 Desktop.ini
+
+# Local read-only Toolkit reference material; never include in production commits
+/reference/
+/osu_toolkit_unified_v1_3_source(1).zip

@@ -2,7 +2,7 @@
 
 ## Scope and ordering
 
-This is a proposed future plan for [PRODUCT_SPEC.md](PRODUCT_SPEC.md), based on the complete owner-confirmed Google Doc and repository commit `231daed`. No implementation is authorized by creating this plan. Most source requests are already present, so batches prioritize verification and a concrete aggregation risk rather than recreating screens. Stable AIM IDs are defined in the specification.
+This is a proposed future plan for [PRODUCT_SPEC.md](PRODUCT_SPEC.md), based on the complete owner-confirmed Google Doc and repository commit `231daed`. No implementation is authorized by creating this plan. The source was refreshed on 2026-09-28 UTC; see PRODUCT_SPEC.md AIM-009–AIM-017 and TOOLKIT_V1_3_PORTING_AUDIT.md. The original diagnostics requests are largely present. The newly read supplemental-map requests are not implemented; their Toolkit-derived TG batches below complement this original B-series plan. Stable AIM IDs are defined in the specification.
 
 Dependency order: **B1 → B2 → B3 → B4**. B4 is conditional on a requirements decision, not an automatic follow-on. Each batch must leave a buildable Windows application. No broad architecture rewrite or scoring recalibration is required.
 
@@ -92,3 +92,60 @@ Use `OsuAimAnalyzer\build-release.bat` for a release/publish smoke check when sh
 - Preserve existing screens and directional labels; do not reimplement AIM-005–AIM-007 just because they appear in the source backlog.
 - Keep Google Doc completion notes separate from verification status. Only mark an item verified after its acceptance checks pass.
 - Commit each coherent batch separately, report behavior and validation, and update the specification without renumbering IDs. This planning change itself adds only the two Markdown files and leaves application and Google Doc content unchanged.
+
+## Toolkit-derived feature delivery plan
+
+This TG sequence is the authoritative schedule for the newly requested supplemental-map workflow, superseding the audit's generic T0–T5 capability roadmap. Preserve original B1–B4 diagnostics work; do not renumber AIM IDs. Toolkit code stays read-only under reference/. Audit/plan changes do not authorize implementation.
+
+### TG1 — Shared contracts and native test foundation (ready to begin)
+
+**Scope:** Foundation for AIM-009–AIM-017, especially AIM-010–AIM-013. Reuse B1's separate native test project approach and public model boundaries. Define immutable source identity, transform options (base/effective/generated units), structured recommendation evidence and durable generation-result contracts. Characterize existing mod/AR/CS/rate math and diagnosis outputs before extracting shared helpers. Expose structured run-level diagnosis without changing the existing prose or scoring. No map writes, audio tools, schema migration or new UI.
+
+**Reuse:** CONSOLIDATE AimTrainingDiagnosisEngine, ModUtils/AimAnalyzer helpers, BeatmapResolver and selected-play context. DIRECT REUSE existing native scripts; no additional selection reader needed. Toolkit fixtures inform tests rather than becoming runtime dependencies.
+
+**Exit:** Windows app builds; deterministic native tests establish source identity, no mutation, clock/mod semantics and diagnostic compatibility. Document decisions still required for variant count, pitch, compensation and evidence bands. These product decisions do not block building contracts/tests. Medium refactoring risk; keep helper extraction narrow and behavior-preserving.
+
+### TG2 — Preserving documents, resources and pure transformations
+
+**Scope:** AIM-011–AIM-013 and parser prerequisites for AIM-016. Requires TG1. Add a preserving beatmap document separate from BeatmapData, a resource manifest and adapter to existing analysis inputs. ADAPT Toolkit retiming/spacing algorithms into pure native services. CONSOLIDATE shared formulas and parser metadata handling. Support rate 1.0/unchanged transforms first, then slowdown/stat and spacing transforms in separately buildable changes.
+
+**Exit/tests:** Round-trip retained content, multi-BPM and inherited timing, sliders/repeats/control points, malformed/unsupported events, invariant rounding, unchanged source files, and no cached-star leakage into transformed previews. No file generation or audio dependency yet. High correctness risk: unsupported storyboard behavior must be explicit, not silently wrong.
+
+### TG3 — Evidence-backed series planner and Recent Play preview
+
+**Scope:** AIM-009, AIM-010, AIM-014, preview portion of AIM-015. Requires TG1/TG2; B2 is needed before using lifetime streak evidence. REIMPLEMENT the planner using structured Analyzer diagnosis and shared transforms. Target approximately five complementary variants, with recipe/count decisions resolved before final planner behavior. Show deltas, reasons, uncertainty and achieved spacing; do not publish maps yet.
+
+**Exit/tests:** A meaningful preview build with no disk generation. Tests cover sparse/conflicting history, deterministic bounded choices, duplicate prevention, source/mod contracts, stale selection rejection and UI responsiveness. No unsupported promise that suggestions cause improvement. No initial schema migration; preview models remain in memory. Toolkit's star heuristic is optional, separately labeled and never substituted into production scoring.
+
+### TG4 — One staged multi-difficulty export pipeline
+
+**Scope:** AIM-009, AIM-013, AIM-014, AIM-016 and final generation action in AIM-015. Requires TG2/TG3. REIMPLEMENT exporter using a validated resource manifest and provenance manifest; retain identical title/background, fresh generated identities and only planned difficulties. First deliver a spacing/stat-only testable build without FFmpeg, then complete rate audio as TG5. Shared output supports multiple variants and uses existing resolver invalidation; no separate Songs scanner/history store.
+
+**Exit/tests:** Valid .osz, nested resources, title/background preservation, no original-set mutation, no stale temp paths, collisions, cancellation and atomic publication. Persist provenance outside analysis tables initially; defer database migration until outcome queries actually need it. Incomplete/rate-dependent recipes are clearly unavailable in this intermediate build, never silently omitted from a promised completed series. High filesystem/identity risk.
+
+### TG5 — Audio rendering and complete selected-map series
+
+**Scope:** AIM-011/AIM-012 and full AIM-009/AIM-014/AIM-015. Requires TG4. ADAPT Toolkit rate/filter intent, REIMPLEMENT cancellable native process management with one explicitly selected audio binary distribution. Deduplicate audio by source content and transform options, not filename alone. Resolve pitch/stat defaults before shipping. Finish the five-variant-or-explained-fewer workflow and optional user-triggered package open.
+
+**Exit/tests:** Audio duration/pitch policy, timestamp alignment, failure/cancel cleanup, deduplicated resources, package import smoke checks in osu!stable and unchanged original replay analysis. Production app remains one WinForms application. No Python/Pillow/Tk/mandatory tosu dependency. High integration risk; keep renderer failure independent from analysis startup.
+
+### TG6 — Broader diagnostics generation (deferred)
+
+AIM-017 follows a proven TG5 workflow and explicit scope decisions. Reuse planner/transforms/exporter; define map/category selection, count and outcome tracking before committing to storage changes. Merger, flips, random backgrounds and writing into existing mapsets are not prerequisites and are not scheduled by this source request.
+
+## Dependency and change summary
+
+TG1 → TG2 → TG3 → TG4 → TG5; TG6 is deferred. T1 from the audit (discovery/selection hardening) can be a separate later batch: selected-play generation already has a resolved map and does not require a running osu! process. Do not delay this workflow by building an unrelated song-select subsystem.
+
+| Area | Required integration change | Storage/schema impact |
+| --- | --- | --- |
+| AIM-010 evidence | Structured run diagnosis and planner, preserve existing outputs | None initially; longitudinal outcomes separately scoped |
+| AIM-011–AIM-013 | Preserving parser, canonical options, pure transforms | In-memory previews; generated media only at export |
+| AIM-014 series | Deduplicated recipes and provenance | Versioned manifest; no duplicate analysis database |
+| AIM-015 UI | One native Recent Play page and cancellable jobs | None independently |
+| AIM-016 export | Staged new-set writer and resource validation | New user-selected package; original mapset untouched |
+| AIM-017 general workflow | TBD after scope | TBD, not assumed |
+
+## Repository isolation and release gate
+
+The branch is feature/toolkit-integration, based on master at adc29a1. Ignore reference/ and the local Toolkit archive, and retain AGENTS.md's read-only boundary. Audit completion is static review, not runtime certification. No source from reference/ belongs in the planning commit. Before each future feature commit, review staged paths and confirm no reference/source archive was included. Run native build/tests appropriate to the change and report results. Initial batch ready for authorization: **TG1 — Shared contracts and native test foundation**; no feature work has begun.
