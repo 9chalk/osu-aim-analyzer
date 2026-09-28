@@ -34,6 +34,7 @@ public static class ToolkitUi
         };
         layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
         var label = new Label
         {

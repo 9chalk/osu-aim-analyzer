@@ -297,9 +297,7 @@ public sealed class MainForm : Form
 
     private Control BuildPlayInspector()
     {
-        // v28: keep the fixed hero + vertical rail from v27, but restore exact-difficulty runs
-        // to the Overview beneath the visual diagnostics. Alternate readouts/tools still use the
-        // page host so they can take over the body without fighting the overview layout.
+        // Keep the hero on Overview. Readout/tool pages use the full inner height.
         ConfigurePlayInspectorHistoryGrid();
 
         var root = new TableLayoutPanel
@@ -309,6 +307,7 @@ public sealed class MainForm : Form
         };
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 154));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         root.Controls.Add(playInspectorHero, 0, 0);
 
         var body = new TableLayoutPanel
@@ -318,6 +317,7 @@ public sealed class MainForm : Form
         };
         body.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 104));
         body.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        body.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         body.Controls.Add(BuildPlayInspectorNavigation(), 0, 0);
         body.Controls.Add(playInspectorPageHost, 1, 0);
         root.Controls.Add(body, 0, 1);
@@ -493,6 +493,12 @@ public sealed class MainForm : Form
         if (!playInspectorPages.TryGetValue(key, out var target)) return;
         if (playInspectorPage.Equals(key, StringComparison.OrdinalIgnoreCase) && target.Visible) return;
         playInspectorPage = key;
+        bool overview = key.Equals("Overview", StringComparison.OrdinalIgnoreCase);
+        if (playInspectorHero.Parent is TableLayoutPanel inspector)
+        {
+            inspector.RowStyles[0].Height = overview ? 154 : 0;
+            playInspectorHero.Visible = overview;
+        }
         playInspectorPageHost.SuspendLayout();
         try
         {
@@ -500,7 +506,7 @@ public sealed class MainForm : Form
                 kv.Value.Visible = ReferenceEquals(kv.Value, target);
             target.BringToFront();
         }
-        finally { playInspectorPageHost.ResumeLayout(false); }
+        finally { playInspectorPageHost.ResumeLayout(true); }
 
         foreach (var kv in playInspectorNavButtons)
         {
